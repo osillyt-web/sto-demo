@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>Адмін-панель — АвтоТочка</title>
+<link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<link rel="stylesheet" href="/static/admin.css?v={{ASSET_V}}">
+</head>
+<body class="adm">
+
+<header class="adm-head">
+  <div class="wrap adm-head-inner">
+    <a class="brand" href="/" target="_blank" rel="noopener">
+      <span class="brand-mark">AT</span>
+      <span class="brand-text"><b>АвтоТочка</b><small>адмін-панель</small></span>
+    </a>
+    <div class="adm-tools">
+      <a class="btn btn-ghost btn-sm" href="/" target="_blank" rel="noopener">Відкрити сайт ↗</a>
+      <a class="btn btn-ghost btn-sm" href="/admin/export.csv">Експорт CSV</a>
+      <form method="post" action="/admin/logout"><button class="btn btn-ghost btn-sm" type="submit">Вийти</button></form>
+    </div>
+  </div>
+</header>
+
+<main class="wrap adm-main">
+  <section class="stats">
+    <div class="stat"><b id="st-total">—</b><span>заявок усього</span></div>
+    <div class="stat"><b id="st-new">—</b><span>нових без відповіді</span></div>
+    <div class="stat"><b id="st-today">—</b><span>заявок сьогодні</span></div>
+    <div class="stat stat-accent"><b id="st-conv">—</b><span>частка нових</span></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Заявки з сайту</h2>
+      <div class="panel-tools">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-filter="all">Усі</button>
+          <button class="seg-btn" data-filter="new">Нові</button>
+          <button class="seg-btn" data-filter="done">Опрацьовані</button>
+        </div>
+        <input class="search" id="search" type="search" placeholder="Пошук: імʼя, телефон, авто" aria-label="Пошук заявок">
+        <button class="btn btn-ghost btn-sm" id="reload">Оновити</button>
+      </div>
+    </div>
+    <div id="leads-box"><div class="empty">Завантаження…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Послуги та ціни</h2>
+      <div class="panel-tools">
+        <button class="btn btn-accent btn-sm" id="toggle-add">Додати послугу</button>
+      </div>
+    </div>
+    <form class="add-row" id="add-form" hidden>
+      <input name="title" placeholder="Назва послуги" required>
+      <input name="price" placeholder="Ціна на сайті, напр. від 1 200 ₴" required>
+      <input name="base" type="number" min="0" step="50" placeholder="База для калькулятора, ₴" required>
+      <input name="note" placeholder="Що входить (коротко)">
+      <button class="btn btn-accent btn-sm" type="submit">Додати</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="cancel-add">Скасувати</button>
+    </form>
+    <div id="svc-box"><div class="empty">Завантаження…</div></div>
+  </section>
+
+
+  <section class="panel" id="analytics">
+    <div class="panel-head">
+      <h2>Аналітика сайту <span class="hint">останні 30 днів</span></h2>
+      <div class="panel-tools">
+        <button class="btn btn-ghost btn-sm" id="reload-stats">Оновити</button>
+      </div>
+    </div>
+    <div class="funnel" id="funnel">
+      <div class="fstep"><b id="an-views">—</b><span>відкрили сайт</span></div>
+      <div class="farrow">→</div>
+      <div class="fstep"><b id="an-calc">—</b><span>скористались калькулятором</span></div>
+      <div class="farrow">→</div>
+      <div class="fstep"><b id="an-form">—</b><span>почали заявку</span></div>
+      <div class="farrow">→</div>
+      <div class="fstep fstep-accent"><b id="an-leads">—</b><span>надіслали заявку</span></div>
+    </div>
+    <p class="an-conv">Конверсія сайту (заявка / відвідувач): <b id="an-conv">—</b> · найчастіше обирають:
+      <span id="an-top">—</span></p>
+    <div class="chart" id="an-chart" aria-label="Заявки за днями"></div>
+  </section>
+
+  <section class="panel" id="tg">
+    <div class="panel-head">
+      <h2>Сповіщення в Telegram</h2>
+      <div class="panel-tools">
+        <span class="badge" id="tg-state">—</span>
+      </div>
+    </div>
+    <p class="panel-sub">Кожна нова заявка приходить повідомленням у Telegram. Токен береться у
+      <b>@BotFather</b>, chat_id — у <b>@userinfobot</b> (або ваш номер у @username_to_id_bot).</p>
+    <form class="settings-form" id="tg-form">
+      <label>Токен бота
+        <input name="tg_token" id="tg-token" placeholder="123456789:AA... (залиште порожнім, щоб не змінювати)" autocomplete="off">
+      </label>
+      <label>Chat ID
+        <input name="tg_chat" id="tg-chat" placeholder="напр. 496164846" autocomplete="off">
+      </label>
+      <label class="check-line">
+        <input type="checkbox" name="tg_enabled" id="tg-enabled" value="1">
+        <span>Надсилати сповіщення про нові заявки</span>
+      </label>
+      <div class="settings-actions">
+        <button class="btn btn-accent btn-sm" type="submit">Зберегти</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="tg-test">Надіслати тест</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" id="security">
+    <div class="panel-head"><h2>Пароль адміністратора</h2></div>
+    <form class="settings-form" id="pw-form">
+      <label>Поточний пароль
+        <input type="password" name="old" autocomplete="current-password" required>
+      </label>
+      <label>Новий пароль <span class="hint">мінімум 8 символів</span>
+        <input type="password" name="new" autocomplete="new-password" minlength="8" required>
+      </label>
+      <div class="settings-actions">
+        <button class="btn btn-accent btn-sm" type="submit">Змінити пароль</button>
+      </div>
+      <p class="hint">Пароль зберігається хешем (PBKDF2-SHA256, 200 000 ітерацій). Після зміни всі сесії скидаються.</p>
+    </form>
+  </section>
+
+  <p class="adm-foot">Демо-панель. Зміни в послугах одразу видно на сайті; заявки зберігаються в SQLite.</p>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+<script src="/static/admin.js?v={{ASSET_V}}"></script>
+</body>
+</html>

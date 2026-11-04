@@ -1,0 +1,289 @@
+/* админ-панель: заявки, поиск, фильтры, редактор услуг */
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = (v) => (v ?? "").toString().replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const state = { filter: "all", q: "" };
+  let toastTimer = null;
+
+  function toast(text) {
+    const t = $("#toast");
+    if (!t) return;
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2000);
+  }
+
+  async function api(url, body) {
+    const opts = body ? { method: "POST", body: new URLSearchParams(body) } : {};
+    const res = await fetch(url, opts);
+    if (res.status === 401) { location.href = "/admin/login"; throw new Error("auth"); }
+    return res.json();
+  }
+
+  /* ------------------------------ заявки ------------------------------ */
+  async function loadLeads() {
+    const params = new URLSearchParams({ status: state.filter, q: state.q });
+    let data;
+    try { data = await api("/api/admin/leads?" + params); } catch (e) { return; }
+
+    const { leads, stats } = data;
+    $("#st-total").textContent = stats.total;
+    $("#st-new").textContent = stats.new;
+    $("#st-today").textContent = stats.today;
+    $("#st-conv").textContent = stats.total
+      ? Math.round((stats.new / stats.total) * 100) + "%"
+      : "—";
+
+    if (!leads.length) {
+      $("#leads-box").innerHTML = `<div class="empty">${
+        state.q || state.filter !== "all"
+          ? "За цим фільтром нічого не знайдено."
+          : "Поки що заявок немає. Відправте тестову з форми на сайті."}</div>`;
+      return;
+    }
+
+    const rows = leads.map(l => `
+      <tr>
+        <td class="hide-sm"><span class="sub-line">${esc(l.created_at)}</span></td>
+        <td>
+          <b>${esc(l.name)}</b>
+          <span class="sub-line"><a href="tel:${esc(l.phone)}">${esc(l.phone)}</a></span>
+        </td>
+        <td class="hide-sm">${esc(l.service) || '<span class="muted">—</span>'}
+          <span class="sub-line">${esc(l.car) || "авто не вказано"}</span></td>
+        <td class="hide-sm">
+          ${esc(l.when_at) || "дата не обрана"}
+          ${l.estimate ? `<span class="sub-line">Кошторис: ${esc(l.estimate)}</span>` : ""}
+          ${l.comment ? `<span class="sub-line">«${esc(l.comment)}»</span>` : ""}
+        </td>
+        <td>
+          <input class="note-input" data-note="${l.id}" value="${esc(l.note)}"
+                 placeholder="Нотатка менеджера" aria-label="Нотатка до заявки ${l.id}">
+        </td>
+        <td><span class="badge ${l.status === "new" ? "new" : "done"}">${
+          l.status === "new" ? "нова" : "опрацьовано"}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" title="${l.status === "new" ? "Позначити опрацьованою" : "Повернути в нові"}"
+                    data-status-id="${l.id}" data-status="${l.status === "new" ? "done" : "new"}">
+              ${l.status === "new" ? "✓" : "↺"}
+            </button>
+            <button class="icon-btn danger" title="Видалити заявку" data-del="${l.id}">✕</button>
+          </div>
+        </td>
+      </tr>`).join("");
+
+    $("#leads-box").innerHTML = `
+      <table class="responsive">
+        <thead><tr>
+          <th class="hide-sm">Дата</th><th>Клієнт</th><th class="hide-sm">Послуга / авто</th>
+          <th class="hide-sm">Деталі</th><th>Нотатка</th><th>Статус</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  /* ------------------------------ услуги ------------------------------ */
+  async function loadServices() {
+    let list;
+    try { list = await api("/api/admin/services"); } catch (e) { return; }
+
+    const rows = list.map(s => `
+      <tr class="svc-row ${s.active ? "" : "off"}" data-id="${s.id}">
+        <td><input value="${esc(s.title)}" data-f="title" aria-label="Назва"></td>
+        <td style="width:150px"><input value="${esc(s.price)}" data-f="price" aria-label="Ціна"></td>
+        <td style="width:120px"><input value="${s.base}" type="number" step="50" min="0" data-f="base" aria-label="База"></td>
+        <td class="hide-sm"><input value="${esc(s.note)}" data-f="note" aria-label="Опис"></td>
+        <td style="width:110px">
+          <label class="switch"><input type="checkbox" data-f="active" ${s.active ? "checked" : ""}>на сайті</label>
+        </td>
+        <td style="width:150px">
+          <div class="row-actions">
+            <button class="btn btn-accent btn-sm" data-save="${s.id}">Зберегти</button>
+            <button class="icon-btn" data-move="${s.id}" data-dir="up" title="Вище">↑</button>
+            <button class="icon-btn" data-move="${s.id}" data-dir="down" title="Нижче">↓</button>
+            <button class="icon-btn danger" data-svc-del="${s.id}" title="Видалити">✕</button>
+          </div>
+        </td>
+      </tr>`).join("");
+
+    $("#svc-box").innerHTML = `
+      <table class="responsive">
+        <thead><tr>
+          <th>Назва</th><th>Ціна</th><th>База, ₴</th><th class="hide-sm">Опис</th><th>Активна</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  /* ------------------------------ события ------------------------------ */
+  document.addEventListener("click", async (e) => {
+    const statusBtn = e.target.closest("[data-status-id]");
+    if (statusBtn) {
+      await api("/admin/lead", { id: statusBtn.dataset.statusId, status: statusBtn.dataset.status });
+      toast("Статус оновлено");
+      loadLeads();
+      return;
+    }
+
+    const delLead = e.target.closest("[data-del]");
+    if (delLead) {
+      if (!confirm("Видалити заявку назавжди?")) return;
+      await api("/admin/lead", { action: "delete", id: delLead.dataset.del });
+      toast("Заявку видалено");
+      loadLeads();
+      return;
+    }
+
+    const saveSvc = e.target.closest("[data-save]");
+    if (saveSvc) {
+      const row = saveSvc.closest("tr");
+      const body = { action: "update", id: saveSvc.dataset.save };
+      $$("input", row).forEach(i => {
+        body[i.dataset.f] = i.type === "checkbox" ? (i.checked ? "1" : "0") : i.value;
+      });
+      await api("/admin/service", body);
+      toast("Збережено — на сайті вже оновлено");
+      loadServices();
+      return;
+    }
+
+    const moveBtn = e.target.closest("[data-move]");
+    if (moveBtn) {
+      await api("/admin/service", { action: "move", id: moveBtn.dataset.move, dir: moveBtn.dataset.dir });
+      loadServices();
+      return;
+    }
+
+    const delSvc = e.target.closest("[data-svc-del]");
+    if (delSvc) {
+      if (!confirm("Видалити послугу? Вона зникне з сайту й калькулятора.")) return;
+      await api("/admin/service", { action: "delete", id: delSvc.dataset.svcDel });
+      toast("Послугу видалено");
+      loadServices();
+      return;
+    }
+
+    const filterBtn = e.target.closest(".seg-btn");
+    if (filterBtn) {
+      $$(".seg-btn").forEach(b => b.classList.toggle("active", b === filterBtn));
+      state.filter = filterBtn.dataset.filter;
+      loadLeads();
+    }
+  });
+
+  /* автосохранение заметки при уходе из поля */
+  document.addEventListener("blur", async (e) => {
+    const input = e.target.closest?.("[data-note]");
+    if (!input) return;
+    const row = input.closest("tr");
+    const badge = row.querySelector(".badge");
+    const status = badge.classList.contains("new") ? "new" : "done";
+    await api("/admin/lead", { id: input.dataset.note, status, note: input.value });
+    toast("Нотатку збережено");
+  }, true);
+
+  /* поиск с задержкой */
+  let searchTimer = null;
+  $("#search")?.addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { state.q = e.target.value.trim(); loadLeads(); }, 300);
+  });
+
+  $("#reload")?.addEventListener("click", () => { loadLeads(); loadServices(); toast("Оновлено"); });
+
+  /* добавление услуги */
+  const addForm = $("#add-form");
+  $("#toggle-add")?.addEventListener("click", () => {
+    addForm.hidden = !addForm.hidden;
+    if (!addForm.hidden) addForm.querySelector("input").focus();
+  });
+  $("#cancel-add")?.addEventListener("click", () => { addForm.hidden = true; addForm.reset(); });
+  addForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await api("/admin/service", { action: "add", ...Object.fromEntries(new FormData(addForm)) });
+    addForm.reset();
+    addForm.hidden = true;
+    toast("Послугу додано");
+    loadServices();
+  });
+
+  loadLeads();
+  loadServices();
+
+  /* ------------------------------ аналитика ------------------------------ */
+  async function loadAnalytics() {
+    let d;
+    try { d = await api("/api/admin/analytics"); } catch (e) { return; }
+    $("#an-views").textContent = d.views;
+    $("#an-calc").textContent = d.calc;
+    $("#an-form").textContent = d.form;
+    $("#an-leads").textContent = d.leads;
+    $("#an-conv").textContent = d.conversion + "%";
+    $("#an-top").textContent = d.top.length
+      ? d.top.map(t => `${t.service} (${t.c})`).join(", ")
+      : "поки немає даних";
+
+    const chart = $("#an-chart");
+    const days = d.days.slice(-14);
+    if (!days.length) { chart.innerHTML = '<p class="empty">Заявок за період ще немає.</p>'; return; }
+    const max = Math.max(...days.map(x => x.c));
+    chart.innerHTML = days.map(x => {
+      const h = Math.max(6, Math.round((x.c / max) * 110));
+      return `<div class="bar"><span style="height:${h}px" title="${x.d}: ${x.c}"></span>
+              <small>${x.d.slice(8)}.${x.d.slice(5, 7)}</small></div>`;
+    }).join("");
+  }
+
+  /* ------------------------------ telegram ------------------------------ */
+  async function loadSettings() {
+    let d;
+    try { d = await api("/api/admin/settings"); } catch (e) { return; }
+    $("#tg-chat").value = d.tg_chat || "";
+    $("#tg-enabled").checked = d.tg_enabled === "1";
+    $("#tg-token").placeholder = d.tg_token_set === "1"
+      ? `збережено (…${d.tg_token_tail}) — введіть новий, щоб замінити`
+      : "123456789:AA... (токен від @BotFather)";
+    const state = $("#tg-state");
+    const on = d.tg_enabled === "1" && d.tg_token_set === "1";
+    state.textContent = on ? "увімкнено" : "вимкнено";
+    state.className = "badge " + (on ? "badge-ok" : "badge-off");
+  }
+
+  $("#tg-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const res = await api("/admin/settings", {
+      tg_token: f.tg_token.value.trim(),
+      tg_chat: f.tg_chat.value.trim(),
+      tg_enabled: f.tg_enabled.checked ? "1" : "0",
+    });
+    if (res.ok) { toast("Налаштування збережено"); f.tg_token.value = ""; loadSettings(); }
+    else toast(res.error || "Не збережено");
+  });
+
+  $("#tg-test")?.addEventListener("click", async () => {
+    toast("Надсилаємо…");
+    const res = await api("/admin/settings/test", {});
+    toast(res.ok ? "Тестове повідомлення надіслано — перевірте Telegram"
+                 : "Не вдалося: " + (res.info || "перевірте токен і chat_id"));
+  });
+
+  /* ------------------------------ пароль ------------------------------ */
+  $("#pw-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const res = await api("/admin/password", { old: f.old.value, new: f.new.value });
+    if (res.ok) { toast("Пароль змінено — увійдіть заново"); setTimeout(() => location.href = "/admin/login", 1200); }
+    else toast(res.error || "Не змінено");
+  });
+
+  $("#reload-stats")?.addEventListener("click", () => { loadAnalytics(); toast("Оновлено"); });
+  loadAnalytics();
+  loadSettings();
+})();

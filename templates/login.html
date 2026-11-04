@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>Вхід — АвтоТочка</title>
+<link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<style>
+  body{min-height:100vh;display:grid;place-items:center;padding:24px;
+       background:radial-gradient(640px 420px at 70% 20%,rgba(255,106,26,.16),transparent 70%),
+                  radial-gradient(520px 380px at 20% 85%,rgba(46,110,255,.10),transparent 70%),var(--bg)}
+  .card-login{width:min(400px,100%);background:linear-gradient(180deg,var(--card-2),var(--card));
+              border:1px solid var(--line);border-radius:20px;padding:32px;box-shadow:var(--shadow)}
+  .card-login .brand{margin-bottom:22px}
+  .card-login h1{font-size:24px;margin-bottom:6px}
+  .card-login .sub{margin-bottom:22px;font-size:14px}
+  .card-login .form{max-width:none}
+  .err{color:var(--err);font-size:14px;margin:0 0 14px;background:rgba(255,92,92,.08);
+       border:1px solid rgba(255,92,92,.25);border-radius:9px;padding:10px 12px}
+  .hint{margin:18px 0 0;font-size:12.5px;color:var(--muted);text-align:center}
+  .back{margin-top:16px;text-align:center;font-size:13px}
+  .back a{color:var(--muted)}
+  .back a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="card-login">
+  <a class="brand" href="/">
+    <span class="brand-mark">AT</span>
+    <span class="brand-text"><b>АвтоТочка</b><small>адмін-панель</small></span>
+  </a>
+  <h1>Вхід в адмін-панель</h1>
+  <p class="sub">Заявки, прайс і послуги вашого сайту.</p>
+  {{ERROR}}
+  <form class="form" method="post" action="/admin/login">
+    <label>Пароль<input type="password" name="password" autofocus required autocomplete="current-password"></label>
+    <button class="btn btn-accent btn-wide" type="submit">Увійти</button>
+  </form>
+  <p class="hint">Демо-пароль: <b>admin123</b> · змінюється змінною ADMIN_PASSWORD</p>
+  <p class="back"><a href="/">← Повернутись на сайт</a></p>
+</div>
+</body>
+</html>
