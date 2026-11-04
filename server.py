@@ -34,7 +34,11 @@ DB_PATH = os.path.join(DATA_DIR, "sto.db")
 AUTH_PATH = os.path.join(DATA_DIR, "auth.json")
 INITIAL_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 PORT = int(os.environ.get("PORT", "8000"))
-SITE_URL = os.environ.get("SITE_URL", f"http://127.0.0.1:{PORT}")
+# локально слушаем только 127.0.0.1; на хостинге (Render) задаётся HOST=0.0.0.0
+HOST = os.environ.get("HOST", "127.0.0.1")
+SITE_URL = (os.environ.get("SITE_URL")
+            or os.environ.get("RENDER_EXTERNAL_URL")
+            or f"http://127.0.0.1:{PORT}")
 
 SESSIONS = {}          # token -> datetime истечения
 LOGIN_TRIES = {}       # ip -> [время неудачных попыток]
@@ -788,11 +792,11 @@ class Server(ThreadingHTTPServer):
 if __name__ == "__main__":
     seed()
     load_auth()
-    print(f"Сайт:    http://127.0.0.1:{PORT}/")
+    print(f"Сайт:    {SITE_URL}/")
     print(f"Адмінка: http://127.0.0.1:{PORT}/admin")
     print(f"Пароль адмінки: {INITIAL_PASSWORD} (змінюється в адмінці, зберігається хешем)")
     try:
-        Server(("127.0.0.1", PORT), Handler).serve_forever()
+        Server((HOST, PORT), Handler).serve_forever()
     except OSError as e:
         print(f"Порт {PORT} уже занят другим процессом — закройте его и запустите снова. ({e})")
         raise SystemExit(1)

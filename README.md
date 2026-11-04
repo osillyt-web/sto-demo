@@ -103,8 +103,12 @@ favicon, CSP и X-Frame-Options, микроразметка, alt у фото, gz
 
 ## Публикация
 
-VPS от $5/мес: `python server.py` под systemd, nginx как reverse proxy, Let's Encrypt.
-Домен `.com.ua` ~300 грн/год.
+**Демо за 5 минут, бесплатно:** Render, через `render.yaml` — пошагово в [RENDER.md](RENDER.md).
+Даёт ссылку вида `https://sto-demo.onrender.com`; ограничения бесплатного тарифа
+(засыпание, обнуление базы) там же.
+
+**Боевой запуск:** VPS от $5/мес: `python server.py` под systemd, nginx как reverse proxy,
+Let's Encrypt. Домен `.com.ua` ~300 грн/год.
 
 ## Важно про выбор технологии
 
