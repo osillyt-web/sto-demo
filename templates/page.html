@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>{{HEAD_TITLE}}</title>
+<meta name="description" content="{{HEAD_DESC}}">
+<meta name="theme-color" content="#0a0c10">
+<link rel="canonical" href="{{CANONICAL}}">
+<meta property="og:title" content="{{HEAD_TITLE}}">
+<meta property="og:description" content="{{HEAD_DESC}}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="{{CANONICAL}}">
+<meta property="og:image" content="{{SITE_URL}}/static/img/{{OG_IMAGE}}.webp">
+<meta property="og:locale" content="uk_UA">
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+<link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<script type="application/ld+json">{{JSONLD}}</script>
+</head>
+<body>
+
+<header class="top" id="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark">AT</span>
+      <span class="brand-text"><b>АвтоТочка</b><small>СТО · детейлінг</small></span>
+    </a>
+    <nav class="nav">
+      <a href="/services">Послуги</a>
+      <a href="/brands">Марки</a>
+      <a href="/cases">Портфоліо</a>
+      <a href="/#calc">Калькулятор</a>
+      <a href="/#reviews">Відгуки</a>
+      <a href="/#contacts">Контакти</a>
+    </nav>
+    <div class="top-actions">
+      <a class="btn btn-accent" href="/#book">Записатись</a>
+      <button class="burger" id="burger" aria-label="Меню" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="/services">Послуги</a>
+    <a href="/brands">Марки</a>
+    <a href="/cases">Портфоліо</a>
+    <a href="/#calc">Калькулятор</a>
+    <a href="/#reviews">Відгуки</a>
+    <a href="/#contacts">Контакти</a>
+    <a class="btn btn-accent" href="/#book">Записатись</a>
+  </div>
+</header>
+
+{{BODY}}
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <div>
+      <a class="brand" href="/">
+        <span class="brand-mark">AT</span>
+        <span class="brand-text"><b>АвтоТочка</b><small>СТО · детейлінг</small></span>
+      </a>
+      <p class="mini">{{C_ADDRESS}} · {{C_HOURS}}<br>
+        <a href="tel:{{C_PHONE_RAW}}">{{C_PHONE}}</a></p>
+    </div>
+    <div>
+      <b>Послуги</b>
+      <a href="/services/diahnostyka">Діагностика</a>
+      <a href="/services/to">Технічне обслуговування</a>
+      <a href="/services/shynomontazh">Шиномонтаж</a>
+      <a href="/services">Усі послуги</a>
+    </div>
+    <div>
+      <b>Інформація</b>
+      <a href="/brands">Марки авто</a>
+      <a href="/cases">Портфоліо</a>
+      <a href="/privacy">Політика конфіденційності</a>
+    </div>
+  </div>
+  <div class="wrap foot-bottom">
+    <span>© {{YEAR}} АвтоТочка. Демо-сайт для портфоліо.</span>
+    <span>Зроблено з увагою до деталей</span>
+  </div>
+</footer>
+
+<script src="/static/app.js?v={{ASSET_V}}"></script>
+</body>
+</html>

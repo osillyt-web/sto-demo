@@ -309,6 +309,99 @@ for lid in slot_leads + ([cb_id] if cb_id else []):
     if lid:
         post("/admin/lead", {"action": "delete", "id": lid}, cookie)
 
+
+# ---------- SEO-страницы услуг и марок ----------
+import re as _re
+
+
+def get_soft(path, cookie=None):
+    """GET, который не падает на 4xx — для проверок 404 и 401."""
+    try:
+        return get(path, cookie)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace"), e.headers
+
+status, svc_list, _ = get("/services")
+check("GET /services = 200", status == 200)
+check("список послуг: 6 карток", svc_list.count('class="svc-card"') == 6,
+      svc_list.count('class="svc-card"'))
+slugs = ["diahnostyka", "to", "shynomontazh", "kuzovnyi", "poliruvannia", "khimchystka"]
+bad = []
+for slug in slugs:
+    st, page, _ = get("/services/" + slug)
+    h1 = len(_re.findall(r"<h1", page))
+    if (st != 200 or h1 != 1 or "{{" in page or 'class="ptable"' not in page
+            or ("/services/" + slug) not in page):
+        bad.append(slug)
+check("6 сторінок послуг: 200, один H1, ціни, canonical", not bad, bad)
+status, _, _ = get_soft("/services/no-such-service")
+check("невідома послуга = 404", status == 404)
+st, page, _ = get("/services/poliruvannia")
+check("сторінка послуги містить FAQ і розмітку Service",
+      'class="faq-item"' in page and '"@type": "Service"' in page)
+
+status, br_list, _ = get("/brands")
+check("GET /brands = 200, 6 марок", status == 200 and br_list.count('class="svc-card"') == 6,
+      br_list.count('class="svc-card"'))
+st, bmw, _ = get("/brands/bmw")
+check("сторінка марки: 200, моделі, ціни послуг",
+      st == 200 and "X5" in bmw and 'class="model-chip"' in bmw and "від" in bmw)
+status, _, _ = get_soft("/brands/no-such-brand")
+check("невідома марка = 404", status == 404)
+
+_, sm, _ = get("/sitemap.xml")
+check("sitemap: 17 адрес, включно з послугами й марками",
+      sm.count("<loc>") == 17 and "/services/to" in sm and "/brands/skoda" in sm, sm.count("<loc>"))
+
+# ---------- напоминание о записи ----------
+_, days_raw, _ = get("/api/slots/days")
+_cal = json.loads(days_raw)["days"]
+_day = next((d for d in _cal if d["free"] > 0 and not d["closed"]), None)
+check("є день із вільними слотами", bool(_day))
+rem_token = ""
+if _day:
+    st, body, _ = post("/api/leads", {
+        "name": "Тест Нагадування", "phone": "".join(["+380", "67", "123", "45", "67"]),
+        "service": "Шиномонтаж", "car": "Test", "slot_date": _day["date"],
+        "slot_time": _day["times"][0] if isinstance(_day.get("times"), list) else "10:00",
+        "consent": "1"}, follow=True)
+    book_id = json.loads(body).get("id") if body.strip().startswith("{") else None
+
+    _, leads_raw, _ = get("/api/admin/leads", cookie)
+    mine = [l for l in json.loads(leads_raw)["leads"] if l["name"] == "Тест Нагадування"]
+    rem_token = mine[0]["token"] if mine else ""
+    check("у заявки є токен для сторінки запису", bool(rem_token))
+    book_id = mine[0]["id"] if mine else None
+
+if rem_token:
+    st, rem_page, _ = get("/r/" + rem_token)
+    check("сторінка запису: 200, дата й час, кнопки",
+          st == 200 and "Підтвердити запис" in rem_page and "Скасувати запис" in rem_page
+          and "{{" not in rem_page)
+    st, conf, _ = post("/r/" + rem_token + "/confirm", {})
+    check("підтвердження запису працює", st == 200 and "Запис підтверджено" in conf)
+    _, leads_raw, _ = get("/api/admin/leads", cookie)
+    got = [l for l in json.loads(leads_raw)["leads"] if l.get("token") == rem_token]
+    check("підтвердження збережено в базі", bool(got) and got[0]["confirmed"] == "confirmed")
+    st, canc, _ = post("/r/" + rem_token + "/cancel", {})
+    check("скасування запису працює", st == 200 and "Запис скасовано" in canc)
+    _, leads_raw, _ = get("/api/admin/leads", cookie)
+    got = [l for l in json.loads(leads_raw)["leads"] if l.get("token") == rem_token]
+    check("скасування змінює статус заявки",
+          bool(got) and got[0]["confirmed"] == "cancelled" and got[0]["status"] == "cancelled")
+
+    _, rem_raw, _ = get("/api/admin/remind?id=%s" % got[0]["id"], cookie)
+    rem = json.loads(rem_raw)
+    check("API нагадування: текст із посиланням",
+          rem.get("ok") and "/r/" in rem.get("text", "") and rem.get("url", "").endswith(rem_token))
+    status, _, _ = get_soft("/api/admin/remind?id=1")
+    check("API нагадування закрите без входу", status in (401, 403), status)
+    if got:
+        post("/admin/lead", {"action": "delete", "id": got[0]["id"]}, cookie)
+
+status, _, _ = get_soft("/r/nesovsem-token")
+check("невідомий токен запису = 404", status == 404)
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)

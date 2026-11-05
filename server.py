@@ -28,6 +28,9 @@ import urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+from content import SERVICES, BRANDS, SERVICE_SLUG_BY_TITLE
+import seo_pages
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE, "data")
 DB_PATH = os.path.join(DATA_DIR, "sto.db")
@@ -41,12 +44,14 @@ SITE_URL = (os.environ.get("SITE_URL")
             or f"http://127.0.0.1:{PORT}")
 
 # сколько заявок с одного IP принимаем за окно (защита от спама); на демо-стенде можно поднять
-LEAD_LIMIT = int(os.environ.get("LEAD_LIMIT", "30"))
+LEAD_LIMIT = int(os.environ.get("LEAD_LIMIT", "60"))      # принятых заявок с одного IP
 LEAD_WINDOW_S = int(os.environ.get("LEAD_WINDOW_S", "600"))
+ATTEMPT_LIMIT = int(os.environ.get("ATTEMPT_LIMIT", "200"))  # любых обращений к форме
 
 SESSIONS = {}          # token -> datetime истечения
 LOGIN_TRIES = {}       # ip -> [время неудачных попыток]
-LEAD_HITS = {}         # ip -> [время отправки заявок]
+LEAD_HITS = {}         # ip -> [время принятых заявок]
+ATTEMPT_HITS = {}      # ip -> [время любых обращений к форме]
 HIT_HITS = {}          # ip -> [время событий аналитики]
 
 CLASSES = {
@@ -202,9 +207,16 @@ def get_db():
                      ("utm_source", "ALTER TABLE leads ADD COLUMN utm_source TEXT DEFAULT ''"),
                      ("utm_medium", "ALTER TABLE leads ADD COLUMN utm_medium TEXT DEFAULT ''"),
                      ("utm_campaign", "ALTER TABLE leads ADD COLUMN utm_campaign TEXT DEFAULT ''"),
-                     ("kind", "ALTER TABLE leads ADD COLUMN kind TEXT DEFAULT 'book'")):
+                     ("kind", "ALTER TABLE leads ADD COLUMN kind TEXT DEFAULT 'book'"),
+                     ("token", "ALTER TABLE leads ADD COLUMN token TEXT DEFAULT ''"),
+                     ("reminded", "ALTER TABLE leads ADD COLUMN reminded INTEGER DEFAULT 0"),
+                     ("confirmed", "ALTER TABLE leads ADD COLUMN confirmed TEXT DEFAULT ''"),
+                     ("review_asked", "ALTER TABLE leads ADD COLUMN review_asked INTEGER DEFAULT 0")):
         if col not in lead_cols:
             conn.execute(ddl)
+    for row in conn.execute("SELECT id FROM leads WHERE token IS NULL OR token=''").fetchall():
+        conn.execute("UPDATE leads SET token=? WHERE id=?",
+                     (secrets.token_urlsafe(9), row["id"]))
     svc_cols = {r["name"] for r in conn.execute("PRAGMA table_info(services)")}
     for col, ddl in (("base", "ALTER TABLE services ADD COLUMN base INTEGER DEFAULT 0"),
                      ("icon", "ALTER TABLE services ADD COLUMN icon TEXT DEFAULT 'wrench'"),
@@ -384,6 +396,100 @@ def notify_async(text):
 
 # ----------------------------------------------------------------- сервер
 
+
+# ------------------------------------------------------- напоминание о записи
+
+UK_MONTHS = ["січня", "лютого", "березня", "квітня", "травня", "червня",
+             "липня", "серпня", "вересня", "жовтня", "листопада", "грудня"]
+
+
+def lead_when(lead):
+    """(дата словами, час) для заявки — по слотам либо по свободному тексту."""
+    sd = (lead["slot_date"] if "slot_date" in lead.keys() else "") or ""
+    st = (lead["slot_time"] if "slot_time" in lead.keys() else "") or ""
+    try:
+        d = datetime.date.fromisoformat(sd)
+        label = f"{WEEKDAYS_UK[d.weekday()]}, {d.day} {UK_MONTHS[d.month - 1]}"
+        return label, st or ""
+    except Exception:
+        raw = (lead["when_at"] or "").strip()
+        parts = raw.rsplit(" ", 1)
+        return (raw, "") if len(parts) == 1 else (parts[0], parts[1])
+
+
+def reminder_url(conn, token):
+    base = get_setting(conn, "public_url") or SITE_URL
+    return f"{base.rstrip('/')}/r/{token}"
+
+
+def lead_by_token(conn, token):
+    return conn.execute("SELECT * FROM leads WHERE token=?", (token,)).fetchone()
+
+
+def render_reminder(conn, lead, state=""):
+    contacts = contact_settings(conn)
+    date_label, time_label = lead_when(lead)
+    if state == "confirmed":
+        block = '<div class="r-done">Запис підтверджено. Чекаємо вас — якщо щось зміниться, подзвоніть.</div>'
+    elif state == "cancelled":
+        block = '<div class="r-done cancel">Запис скасовано. Якщо це помилка — подзвоніть, повернемо час.</div>'
+    else:
+        block = ""
+    html = (tpl("reminder.html")
+            .replace("{{TOKEN}}", esc(lead["token"] or ""))
+            .replace("{{WHEN_DATE}}", esc(date_label))
+            .replace("{{WHEN_TIME}}", esc(time_label or "час уточнимо"))
+            .replace("{{SERVICE}}", esc(lead["service"] or "Сервіс"))
+            .replace("{{CAR}}", esc(lead["car"] or "—"))
+            .replace("{{ADDRESS}}", esc(contacts["address"]))
+            .replace("{{HOURS}}", esc(contacts["hours"]))
+            .replace("{{PHONE}}", esc(contacts["phone"]))
+            .replace("{{PHONE_RAW}}", esc(contacts["phone_raw"]))
+            .replace("{{STATE_HTML}}", block))
+    return html
+
+
+def reminder_text(conn, lead):
+    """Готовый текст напоминания — владелец отправляет клиенту в Viber/Telegram/SMS."""
+    date_label, time_label = lead_when(lead)
+    contacts = contact_settings(conn)
+    name = (lead["name"] or "").split()[0] if lead["name"] else ""
+    url = reminder_url(conn, lead["token"] or "")
+    return (f"{name + ', н' if name else 'Н'}агадуємо про запис в АвтоТочка: "
+            f"{date_label} о {time_label}. {lead['service'] or ''}".replace("  ", " ").strip()
+            + f". Адреса: {contacts['address']}. Якщо плани змінилися — підтвердьте або скасуйте тут: {url}")
+
+
+def reminder_loop():
+    """Раз в 15 минут: заявка на завтра-сегодня без подтверждения → напомнить владельцу."""
+    while True:
+        try:
+            conn = get_db()
+            now = datetime.datetime.now()
+            rows = conn.execute(
+                "SELECT * FROM leads WHERE slot_date<>'' AND token<>'' AND reminded=0 "
+                "AND (confirmed IS NULL OR confirmed='') AND status<>'cancelled'").fetchall()
+            for lead in rows:
+                try:
+                    dt = datetime.datetime.strptime(f"{lead['slot_date']} {lead['slot_time']}", "%Y-%m-%d %H:%M")
+                except Exception:
+                    continue
+                hours = (dt - now).total_seconds() / 3600
+                if 1 <= hours <= 26:
+                    ok, _ = send_telegram("⏰ <b>Нагадати клієнту</b>\n" + esc(reminder_text(conn, lead)))
+                    if ok:
+                        conn.execute("UPDATE leads SET reminded=1 WHERE id=?", (lead["id"],))
+                        conn.commit()
+            conn.close()
+        except Exception:
+            pass
+        time.sleep(900)
+
+
+
+# страницы услуг и марок: передаём зависимости, чтобы не было циклического импорта
+seo_pages.configure(esc, SITE_URL, tpl, contact_settings)
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "AutoTochka/3.0"
 
@@ -503,9 +609,95 @@ class Handler(BaseHTTPRequestHandler):
                     "capacity": slot_capacity(conn)}
             conn.close()
             return self.json_out(data)
+        if path in ("/services", "/services/"):
+            conn = get_db()
+            try:
+                title, desc, p, body, ld, og = seo_pages.build_services_index(conn)
+                page = seo_pages.render_page(conn, title, desc, p, body, ld, og)
+            finally:
+                conn.close()
+            return self.send(200, page, cache="public, max-age=3600")
+
+        if path.startswith("/services/"):
+            slug = path[len("/services/"):].strip("/")
+            if slug not in SERVICES:
+                return self.not_found()
+            conn = get_db()
+            try:
+                title, desc, p, body, ld, og = seo_pages.build_service_page(conn, slug)
+                page = seo_pages.render_page(conn, title, desc, p, body, ld, og)
+            finally:
+                conn.close()
+            return self.send(200, page, cache="public, max-age=3600")
+
+        if path in ("/brands", "/brands/"):
+            conn = get_db()
+            try:
+                title, desc, p, body, ld, og = seo_pages.build_brands_index(conn)
+                page = seo_pages.render_page(conn, title, desc, p, body, ld, og)
+            finally:
+                conn.close()
+            return self.send(200, page, cache="public, max-age=3600")
+
+        if path.startswith("/brands/"):
+            slug = path[len("/brands/"):].strip("/")
+            if slug not in BRANDS:
+                return self.not_found()
+            conn = get_db()
+            try:
+                title, desc, p, body, ld, og = seo_pages.build_brand_page(conn, slug)
+                page = seo_pages.render_page(conn, title, desc, p, body, ld, og)
+            finally:
+                conn.close()
+            return self.send(200, page, cache="public, max-age=3600")
+
+        if path.startswith("/r/") and path.count("/") == 2:
+            token = path.split("/")[2]
+            conn = get_db()
+            try:
+                lead = lead_by_token(conn, token)
+                if not lead:
+                    return self.not_found()
+                page = render_reminder(conn, lead)
+            finally:
+                conn.close()
+            return self.send(200, page, cache="no-store")
+
+        if path == "/api/admin/remind":
+            if not self.session_ok():
+                return self.json_out({"error": "Потрібен вхід"}, 401)
+            try:
+                lead_id = int((qs.get("id") or ["0"])[0])
+            except ValueError:
+                return self.json_out({"error": "Поганий id"}, 400)
+            conn = get_db()
+            try:
+                lead = conn.execute("SELECT * FROM leads WHERE id=?", (lead_id,)).fetchone()
+                if not lead:
+                    return self.json_out({"error": "Заявку не знайдено"}, 404)
+                if not lead["token"]:
+                    conn.execute("UPDATE leads SET token=? WHERE id=?",
+                                 (secrets.token_urlsafe(9), lead_id))
+                    conn.commit()
+                    lead = conn.execute("SELECT * FROM leads WHERE id=?", (lead_id,)).fetchone()
+                data = {"ok": True, "text": reminder_text(conn, lead),
+                        "url": reminder_url(conn, lead["token"])}
+            finally:
+                conn.close()
+            return self.json_out(data)
+
         if path == "/privacy":
+            conn = get_db()
+            try:
+                pc = contact_settings(conn)
+            finally:
+                conn.close()
             page = (tpl("privacy.html")
                     .replace("{{SITE_URL}}", SITE_URL)
+                    .replace("{{C_PHONE}}", esc(pc["phone"]))
+                    .replace("{{C_PHONE_RAW}}", esc(pc["phone_raw"]))
+                    .replace("{{C_ADDRESS}}", esc(pc["address"]))
+                    .replace("{{C_HOURS}}", esc(pc["hours"]))
                     .replace("{{YEAR}}", str(datetime.date.today().year)))
             return self.send(200, page, cache="public, max-age=3600")
         if path == "/robots.txt":
@@ -521,6 +713,18 @@ class Handler(BaseHTTPRequestHandler):
                     f"  <url><loc>{SITE_URL}/privacy</loc><lastmod>{today}</lastmod>"
                     "<changefreq>yearly</changefreq><priority>0.3</priority></url>\n"
                     f"  <url><loc>{SITE_URL}/cases</loc><lastmod>{today}</lastmod>"
+                    "<changefreq>monthly</changefreq><priority>0.6</priority></url>\n"
+                    + "".join(
+                        f"  <url><loc>{SITE_URL}/services/{slug}</loc><lastmod>{today}</lastmod>"
+                        "<changefreq>monthly</changefreq><priority>0.8</priority></url>\n"
+                        for slug in SERVICES)
+                    + f"  <url><loc>{SITE_URL}/services</loc><lastmod>{today}</lastmod>"
+                    "<changefreq>monthly</changefreq><priority>0.8</priority></url>\n"
+                    + "".join(
+                        f"  <url><loc>{SITE_URL}/brands/{slug}</loc><lastmod>{today}</lastmod>"
+                        "<changefreq>monthly</changefreq><priority>0.6</priority></url>\n"
+                        for slug in BRANDS)
+                    + f"  <url><loc>{SITE_URL}/brands</loc><lastmod>{today}</lastmod>"
                     "<changefreq>monthly</changefreq><priority>0.6</priority></url>\n"
                     "</urlset>\n")
             return self.send(200, body, "application/xml; charset=utf-8", cache="public, max-age=3600")
@@ -643,6 +847,9 @@ class Handler(BaseHTTPRequestHandler):
                              {"Content-Disposition": f'attachment; filename="{name}"'}, cache="no-store")
         if path.startswith("/static/"):
             return self.static_file(path.lstrip("/"))
+        return self.not_found()
+
+    def not_found(self):
         page = (tpl("404.html")
                 .replace("{{YEAR}}", str(datetime.date.today().year)))
         return self.send(404, page)
@@ -664,9 +871,39 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
             return self.json_out({"ok": True})
 
+        if path.startswith("/r/") and (path.endswith("/confirm") or path.endswith("/cancel")):
+            parts = path.strip("/").split("/")
+            if len(parts) != 3:
+                return self.not_found()
+            token, action = parts[1], parts[2]
+            conn = get_db()
+            try:
+                lead = lead_by_token(conn, token)
+                if not lead:
+                    return self.not_found()
+                if action == "confirm":
+                    conn.execute("UPDATE leads SET confirmed='confirmed' WHERE id=?", (lead["id"],))
+                    conn.commit()
+                    notify_async(f"✅ <b>Клієнт підтвердив запис</b>\n"
+                                 f"{esc(lead['name'] or '')} · {esc(lead['phone'] or '')}\n"
+                                 f"{esc(lead['when_at'] or '')} · {esc(lead['service'] or '')}")
+                    state = "confirmed"
+                else:
+                    conn.execute("UPDATE leads SET confirmed='cancelled', status='cancelled' "
+                                 "WHERE id=?", (lead["id"],))
+                    conn.commit()
+                    notify_async(f"❌ <b>Клієнт скасував запис</b>\n"
+                                 f"{esc(lead['name'] or '')} · {esc(lead['phone'] or '')}\n"
+                                 f"{esc(lead['when_at'] or '')} · час звільнився")
+                    state = "cancelled"
+                page = render_reminder(conn, lead, state)
+            finally:
+                conn.close()
+            return self.send(200, page, cache="no-store")
+
         if path == "/api/leads":
-            if not rate_ok(LEAD_HITS, self.ip(), LEAD_LIMIT, LEAD_WINDOW_S):
-                return self.json_out({"ok": False, "error": "Забагато заявок"}, 429)
+            if not rate_ok(ATTEMPT_HITS, self.ip(), ATTEMPT_LIMIT, LEAD_WINDOW_S):
+                return self.json_out({"ok": False, "error": "Забагато запитів"}, 429)
             if (data.get("company") or "").strip():              # honeypot против ботов
                 return self.json_out({"ok": True})
             kind = "callback" if str(data.get("kind")) == "callback" else "book"
@@ -712,16 +949,19 @@ class Handler(BaseHTTPRequestHandler):
             referrer = (data.get("referrer") or "").strip()[:80]
             source = utm_source or referrer or "Прямий захід"
 
+            if not rate_ok(LEAD_HITS, self.ip(), LEAD_LIMIT, LEAD_WINDOW_S):
+                return self.json_out({"ok": False, "error": "Забагато заявок"}, 429)
+            lead_token = secrets.token_urlsafe(9)
             conn.execute("""INSERT INTO leads (name, phone, service, car, when_at, comment, estimate,
                                               source, slot_date, slot_time,
-                                              utm_source, utm_medium, utm_campaign, kind)
-                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                              utm_source, utm_medium, utm_campaign, kind, token)
+                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                          (name[:80], phone[:30], (data.get("service") or "Зворотний дзвінок" if kind == "callback" else data.get("service") or "")[:80],
                           (data.get("car") or "")[:80], when_at,
                           (data.get("comment") or "")[:800],
                           (data.get("estimate") or "")[:40], source[:80],
                           slot_date if slot_date else "", slot_time if slot_time else "",
-                          utm_source, utm_medium, utm_campaign, kind))
+                          utm_source, utm_medium, utm_campaign, kind, lead_token))
             lead_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             conn.execute("INSERT INTO events (name, path, session) VALUES ('lead', '/', ?)",
                          ((data.get("sid") or "")[:32],))
@@ -919,6 +1159,7 @@ class Handler(BaseHTTPRequestHandler):
           <p class="price">{esc(s['price'])}</p>
           <p class="note">{esc(s['note'])}</p>
           <button class="card-link" type="button" data-service="{esc(s['title'])}">Записатись →</button>
+          {('<a class="card-more" href="/services/' + SERVICE_SLUG_BY_TITLE[s['title']] + '">Детальніше →</a>') if s['title'] in SERVICE_SLUG_BY_TITLE else ''}
         </article>""" for s in services)
 
         rows = "\n".join(
@@ -1041,6 +1282,7 @@ if __name__ == "__main__":
     print(f"Сайт:    {SITE_URL}/")
     print(f"Адмінка: http://127.0.0.1:{PORT}/admin")
     print(f"Пароль адмінки: {INITIAL_PASSWORD} (змінюється в адмінці, зберігається хешем)")
+    threading.Thread(target=reminder_loop, daemon=True).start()
     try:
         Server((HOST, PORT), Handler).serve_forever()
     except OSError as e:

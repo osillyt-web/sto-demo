@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<meta name="robots" content="noindex, nofollow">
+<title>Ваш запис · АвтоТочка</title>
+<meta name="theme-color" content="#0a0c10">
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<style>
+  .r-wrap{max-width:520px;margin:0 auto;padding:28px 18px 48px}
+  .r-brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;text-decoration:none;color:var(--text)}
+  .r-mark{width:38px;height:38px;border-radius:10px;background:var(--accent);color:#111;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+  .r-card{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:20px}
+  .r-card h1{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  .r-when{font-size:30px;font-weight:700;margin:10px 0 2px;letter-spacing:-.02em}
+  .r-sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  .r-rows{display:flex;flex-direction:column;gap:10px;margin:18px 0 0;border-top:1px solid var(--line);padding-top:16px}
+  .r-row{display:flex;justify-content:space-between;gap:14px;font-size:14.5px}
+  .r-row span{color:var(--muted)}
+  .r-row b{font-weight:600;text-align:right}
+  .r-actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+  .r-actions .btn{width:100%;justify-content:center;min-height:48px}
+  .r-note{color:var(--muted);font-size:13px;line-height:1.55;margin-top:16px}
+  .r-done{border:1px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:16px;
+    background:rgba(255,106,26,.08);font-size:14.5px;line-height:1.5}
+  .r-done.cancel{border-color:var(--line);background:var(--card-2);color:var(--muted)}
+  .r-cancel{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;
+    cursor:pointer;padding:8px;font-family:inherit}
+</style>
+</head>
+<body style="background:var(--bg)">
+<main class="r-wrap">
+  <a class="r-brand" href="/"><span class="r-mark">AT</span><b>АвтоТочка</b></a>
+  {{STATE_HTML}}
+  <div class="r-card">
+    <h1>Ваш запис</h1>
+    <p class="r-sub">Перевірте дані — і підтвердьте, будь ласка, щоб ми тримали час за вами.</p>
+    <div class="r-when">{{WHEN_DATE}}</div>
+    <p class="r-sub" style="margin:0">{{WHEN_TIME}} · {{SERVICE}}</p>
+    <div class="r-rows">
+      <div class="r-row"><span>Авто</span><b>{{CAR}}</b></div>
+      <div class="r-row"><span>Адреса</span><b>{{ADDRESS}}</b></div>
+      <div class="r-row"><span>Телефон сервісу</span><b><a href="tel:{{PHONE_RAW}}" style="color:var(--text)">{{PHONE}}</a></b></div>
+    </div>
+    <div class="r-actions">
+      <form method="post" action="/r/{{TOKEN}}/confirm"><button class="btn btn-accent" type="submit">Підтвердити запис</button></form>
+      <a class="btn btn-ghost" href="tel:{{PHONE_RAW}}">Перенести — подзвонити</a>
+    </div>
+    <p class="r-note">Якщо плани змінилися — скасуйте заздалегідь, час звільниться для іншого авто.
+      Скасування нічого не коштує.</p>
+    <form method="post" action="/r/{{TOKEN}}/cancel" style="text-align:center;margin-top:6px">
+      <button class="r-cancel" type="submit">Скасувати запис</button>
+    </form>
+  </div>
+  <p class="r-note" style="text-align:center;margin-top:22px">АвтоТочка · {{ADDRESS}} · {{HOURS}}</p>
+</main>
+</body>
+</html>

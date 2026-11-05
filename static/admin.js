@@ -9,6 +9,24 @@
   const state = { filter: "all", q: "" };
   let toastTimer = null;
 
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+  }
+
   function toast(text) {
     const t = $("#toast");
     if (!t) return;
@@ -70,13 +88,19 @@
                  placeholder="Нотатка менеджера" aria-label="Нотатка до заявки ${l.id}">
         </td>
         <td><span class="badge ${l.status === "new" ? "new" : "done"}">${
-          l.status === "new" ? "нова" : "опрацьовано"}</span></td>
+          l.status === "new" ? "нова" : "опрацьовано"}</span>
+          ${l.confirmed === "confirmed" ? '<span class="badge ok">підтвердив</span>' : ""}
+          ${l.confirmed === "cancelled" ? '<span class="badge cb">скасував</span>' : ""}</td>
         <td>
           <div class="row-actions">
             <button class="icon-btn" title="${l.status === "new" ? "Позначити опрацьованою" : "Повернути в нові"}"
                     data-status-id="${l.id}" data-status="${l.status === "new" ? "done" : "new"}">
               ${l.status === "new" ? "✓" : "↺"}
             </button>
+            ${l.slot_time ? `<button class="icon-btn" title="Скопіювати нагадування клієнту"
+                    data-remind="${l.id}">🔔</button>` : ""}
+            ${l.status === "done" ? `<button class="icon-btn" title="Скопіювати прохання про відгук"
+                    data-review="${l.id}">★</button>` : ""}
             <button class="icon-btn danger" title="Видалити заявку" data-del="${l.id}">✕</button>
           </div>
         </td>
@@ -188,7 +212,9 @@
     let data;
     try { data = await api("/api/admin/settings"); } catch (e) { return; }
     const form = $("#contacts-form");
-    if (!form || !data.contacts) return;
+    if (!data.contacts) return;
+    window.__reviewsUrl = data.contacts.reviews_url || "";
+    if (!form) return;
     contactFields.forEach(f => {
       const input = form.querySelector(`[name="${f}"]`);
       if (input) input.value = data.contacts[f.slice(2)] ?? "";
@@ -220,6 +246,28 @@
       await api("/admin/lead", { id: statusBtn.dataset.statusId, status: statusBtn.dataset.status });
       toast("Статус оновлено");
       loadLeads();
+      return;
+    }
+
+    const remindBtn = e.target.closest("[data-remind]");
+    if (remindBtn) {
+      try {
+        const r = await api("/api/admin/remind?id=" + encodeURIComponent(remindBtn.dataset.remind));
+        if (!r.ok) { toast(r.error || "Не вдалося"); return; }
+        const copied = await copyText(r.text);
+        toast(copied ? "Текст нагадування скопійовано" : r.url);
+      } catch (err) { toast("Помилка"); }
+      return;
+    }
+
+    const reviewBtn = e.target.closest("[data-review]");
+    if (reviewBtn) {
+      const link = document.querySelector('meta[name="reviews-url"]')?.content ||
+                   "https://maps.google.com/";
+      const text = "Дякуємо, що обрали АвтоТочку! Якщо все сподобалось — залиште, будь ласка, " +
+                   "відгук, це допомагає нам: " + link;
+      const copied = await copyText(text);
+      toast(copied ? "Прохання про відгук скопійовано" : text);
       return;
     }
 
