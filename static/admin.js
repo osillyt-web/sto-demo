@@ -239,6 +239,58 @@
     } catch (err) { toast("Помилка збереження"); }
   });
 
+
+  /* ------------------------------ состояние системы и журнал ------------------------------ */
+  async function loadOps() {
+    let st;
+    try { st = await api("/api/admin/state"); } catch (e) { return; }
+    if (st.ok === false) return;
+    const alert = $("#pwd-alert");
+    if (alert) alert.hidden = !st.default_password;
+
+    const fmtUp = (sec) => {
+      if (sec == null) return "—";
+      const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600);
+      return d ? `${d} дн ${h} год` : `${h} год`;
+    };
+    const backupOk = st.backup_age_h != null && st.backup_age_h < 26;
+    $("#ops-box").innerHTML = `
+      <div class="ops-cell ${backupOk ? "ok" : "warn"}">
+        <span class="ops-k">Резервна копія</span>
+        <b>${st.last_backup ? esc(st.last_backup) : "немає"}</b>
+        <span class="ops-sub">${st.backup_age_h != null ? st.backup_age_h + " год тому" : "зробіть копію"}</span>
+      </div>
+      <div class="ops-cell">
+        <span class="ops-k">Розмір бази</span><b>${st.db_size_kb} КБ</b>
+        <span class="ops-sub">заявки, налаштування, аналітика</span>
+      </div>
+      <div class="ops-cell">
+        <span class="ops-k">Працює без перезапуску</span><b>${fmtUp(st.uptime_s)}</b>
+        <span class="ops-sub">версія ${esc(st.version)}</span>
+      </div>
+      <div class="ops-cell ${st.errors_log_kb > 0 ? "warn" : "ok"}">
+        <span class="ops-k">Журнал помилок</span>
+        <b>${st.errors_log_kb} КБ</b>
+        <span class="ops-sub">${st.errors_log_kb > 0 ? "перевірте data/errors.log" : "помилок немає"}</span>
+      </div>`;
+
+    let data;
+    try { data = await api("/api/admin/audit?limit=30"); } catch (e) { return; }
+    if (!data.rows || !data.rows.length) {
+      $("#audit-box").innerHTML = `<div class="empty">Журнал порожній.</div>`;
+      return;
+    }
+    $("#audit-box").innerHTML = `<table class="audit-table">
+      <thead><tr><th>Коли</th><th>Дія</th><th>Обʼєкт</th><th>Деталі</th></tr></thead>
+      <tbody>${data.rows.map(r => `<tr>
+        <td class="muted">${esc(r.at)}</td>
+        <td>${esc(r.action)}</td>
+        <td class="muted">${esc(r.target) || "—"}</td>
+        <td class="muted">${esc(r.detail) || "—"}</td></tr>`).join("")}</tbody></table>`;
+  }
+
+  $("#ops-refresh")?.addEventListener("click", loadOps);
+
   /* ------------------------------ события ------------------------------ */
   document.addEventListener("click", async (e) => {
     const statusBtn = e.target.closest("[data-status-id]");
@@ -354,6 +406,7 @@
   });
 
   loadLeads();
+  loadOps();
   loadServices();
   loadCalendar();
   loadContacts();

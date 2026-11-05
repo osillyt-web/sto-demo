@@ -402,6 +402,57 @@ if rem_token:
 status, _, _ = get_soft("/r/nesovsem-token")
 check("невідомий токен запису = 404", status == 404)
 
+
+# ---------- эксплуатация: health, бэкапы, журнал, пароль ----------
+import os as _os, glob as _glob, sqlite3 as _sqlite
+
+st, hbody, _ = get("/api/health")
+h = json.loads(hbody)
+check("GET /api/health = 200, база ок", st == 200 and h.get("ok") and h.get("db") == "ok", h.get("db"))
+check("health віддає версію, аптайм і кількість заявок",
+      bool(h.get("version")) and isinstance(h.get("uptime_s"), int) and h.get("leads", -1) >= 0)
+check("health не світить стан пароля без входу", "default_password" not in h)
+
+st, _, _ = get_soft("/api/admin/state")
+check("стан системи закритий без входу", st in (401, 403), st)
+_, sbody, _ = get("/api/admin/state", cookie)
+state = json.loads(sbody)
+check("стан системи: прапор демо-пароля, розмір бази, копія",
+      state.get("ok") and isinstance(state.get("default_password"), bool)
+      and state.get("db_size_kb", 0) > 0 and state.get("last_backup"))
+
+_, abody, _ = get("/api/admin/audit?limit=200", cookie)
+audit_rows = json.loads(abody)["rows"]
+check("журнал дій пише вхід в адмінку",
+      any(r["action"] == "вхід в адмінку" for r in audit_rows), len(audit_rows))
+
+# копия базы на диске должна открываться и содержать заявки
+_here = _os.path.dirname(_os.path.abspath(__file__))
+_backups = sorted(_glob.glob(_os.path.join(_here, "backups", "sto-*.db")))
+check("резервна копія існує", bool(_backups), len(_backups))
+if _backups:
+    _bc = _sqlite.connect(_backups[-1])
+    try:
+        _leads_in_copy = _bc.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+        _svc_in_copy = _bc.execute("SELECT COUNT(*) FROM services").fetchone()[0]
+    finally:
+        _bc.close()
+    check("копія цілісна: заявки й послуги на місці", _svc_in_copy >= 6 and _leads_in_copy >= 0,
+          f"заявок {_leads_in_copy}, послуг {_svc_in_copy}")
+
+# слабкий пароль не приймається
+st, pbody, _ = post("/admin/password", {"old": "admin123", "new": "admin123"}, cookie)
+check("слабкий пароль відхилено (400)", st == 400, pbody[:60])
+st, pbody, _ = post("/admin/password", {"old": "admin123", "new": "korotkyi"}, cookie)
+check("короткий пароль відхилено (400)", st == 400, pbody[:60])
+
+# журнал фіксує зміну налаштувань
+post("/admin/settings", {"c_phone": base_contacts.get("phone", ""),
+                         "c_phone_raw": base_contacts.get("phone_raw", "")}, cookie)
+_, abody2, _ = get("/api/admin/audit?limit=10", cookie)
+check("журнал фіксує збереження налаштувань",
+      any("налаштування" in r["action"] for r in json.loads(abody2)["rows"]))
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)

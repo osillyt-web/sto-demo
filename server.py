@@ -10,6 +10,7 @@
 """
 
 import os
+import sys
 import re
 import csv
 import io
@@ -30,8 +31,30 @@ from urllib.parse import urlparse, parse_qs
 
 from content import SERVICES, BRANDS, SERVICE_SLUG_BY_TITLE
 import seo_pages
+import ops
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_dotenv(path):
+    """Простой .env без зависимостей: KEY=VALUE, '#' — комментарий, уже заданные не перетираем."""
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key, value = key.strip(), value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except OSError:
+        pass
+
+
+_load_dotenv(os.path.join(BASE, ".env"))
 DATA_DIR = os.path.join(BASE, "data")
 DB_PATH = os.path.join(DATA_DIR, "sto.db")
 AUTH_PATH = os.path.join(DATA_DIR, "auth.json")
@@ -47,6 +70,11 @@ SITE_URL = (os.environ.get("SITE_URL")
 LEAD_LIMIT = int(os.environ.get("LEAD_LIMIT", "60"))      # принятых заявок с одного IP
 LEAD_WINDOW_S = int(os.environ.get("LEAD_WINDOW_S", "600"))
 ATTEMPT_LIMIT = int(os.environ.get("ATTEMPT_LIMIT", "200"))  # любых обращений к форме
+
+BACKUPS_DIR = os.path.join(BASE, "backups")
+ERRORS_LOG = os.path.join(DATA_DIR, "errors.log")
+VERSION = "3.2"
+STARTED_AT = datetime.datetime.now()
 
 SESSIONS = {}          # token -> datetime истечения
 LOGIN_TRIES = {}       # ip -> [время неудачных попыток]
@@ -145,6 +173,28 @@ def load_auth():
         return payload
     with open(AUTH_PATH, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+WEAK_PASSWORDS = {"admin123", "12345678", "123456789", "password", "qwerty123", "11111111"}
+
+
+def password_problem(password):
+    """Текст проблемы или пустая строка, если пароль годный."""
+    if len(password or "") < 10:
+        return "Пароль — мінімум 10 символів"
+    if password in WEAK_PASSWORDS or password == INITIAL_PASSWORD:
+        return "Цей пароль занадто простий — оберіть інший"
+    if not re.search(r"[A-Za-zА-Яа-яЇїІіЄєҐґ]", password) or not re.search(r"\d", password):
+        return "Додайте в пароль літери та цифри"
+    return ""
+
+
+def is_default_password():
+    """True, пока в системе стоит демо-пароль из ADMIN_PASSWORD (по умолчанию admin123)."""
+    try:
+        return verify_password(INITIAL_PASSWORD)
+    except Exception:
+        return False
 
 
 def verify_password(password):
@@ -460,6 +510,20 @@ def reminder_text(conn, lead):
             + f". Адреса: {contacts['address']}. Якщо плани змінилися — підтвердьте або скасуйте тут: {url}")
 
 
+def backup_loop():
+    """Раз в сутки в 03:00 — копия базы; при старте — если последней копии нет или она старше 20 ч."""
+    while True:
+        try:
+            if ops.backup_is_stale(BACKUPS_DIR):
+                path = ops.backup_db(DB_PATH, BACKUPS_DIR)
+                print(f"[backup] {os.path.basename(path)}")
+        except Exception as exc:
+            print(f"[backup] ошибка: {exc}")
+        now = datetime.datetime.now()
+        nxt = (now + datetime.timedelta(days=1)).replace(hour=3, minute=0, second=0, microsecond=0)
+        time.sleep(max(60, (nxt - now).total_seconds()))
+
+
 def reminder_loop():
     """Раз в 15 минут: заявка на завтра-сегодня без подтверждения → напомнить владельцу."""
     while True:
@@ -491,7 +555,16 @@ def reminder_loop():
 seo_pages.configure(esc, SITE_URL, tpl, contact_settings)
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AutoTochka/3.0"
+    server_version = "AutoTochka/3.2"
+
+    def log_error(self, fmt, *args):
+        """Ошибки пишем в data/errors.log — иначе на хостинге они теряются."""
+        try:
+            with open(ERRORS_LOG, "a", encoding="utf-8") as fh:
+                fh.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} " + (fmt % args) + "\n")
+        except Exception:
+            pass
+        return super().log_error(fmt, *args)
 
     # ------------------------------------------------------------ служебное
     def send(self, code, body, ctype="text/html; charset=utf-8", extra=None, cache=None):
@@ -753,6 +826,63 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_out({"services": services,
                                   "classes": [{"key": k, "title": v[0], "mult": v[1]}
                                               for k, v in CLASSES.items()]})
+        if path in ("/api/health", "/health", "/status"):
+            health = {"ok": False, "version": VERSION, "time": datetime.datetime.now().isoformat(timespec="seconds")}
+            try:
+                conn = get_db()
+                try:
+                    conn.execute("SELECT 1").fetchone()
+                    health["db"] = "ok"
+                    health["leads"] = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+                    health["settings"] = conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
+                    health["slot_capacity"] = slot_capacity(conn)
+                finally:
+                    conn.close()
+                health["ok"] = True
+                health["uptime_s"] = int((datetime.datetime.now() - STARTED_AT).total_seconds())
+                lb = ops.last_backup(BACKUPS_DIR)
+                health["last_backup"] = lb["name"] if lb else None
+                health["backup_age_h"] = lb["age_hours"] if lb else None
+                if self.session_ok():
+                    health["default_password"] = is_default_password()
+                return self.json_out(health)
+            except Exception as exc:
+                health["db"] = f"error: {str(exc)[:120]}"
+                return self.json_out(health, 503)
+
+        if path == "/api/admin/state":
+            if not self.session_ok():
+                return self.json_out({"error": "auth"}, 401)
+            conn = get_db()
+            try:
+                db_size = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
+                lb = ops.last_backup(BACKUPS_DIR)
+                state = {"ok": True, "version": VERSION,
+                         "default_password": is_default_password(),
+                         "db_size_kb": round(db_size / 1024),
+                         "last_backup": lb["name"] if lb else None,
+                         "backup_age_h": lb["age_hours"] if lb else None,
+                         "uptime_s": int((datetime.datetime.now() - STARTED_AT).total_seconds()),
+                         "errors_log_kb": round(os.path.getsize(ERRORS_LOG) / 1024)
+                                          if os.path.exists(ERRORS_LOG) else 0}
+                return self.json_out(state)
+            finally:
+                conn.close()
+
+        if path == "/api/admin/audit":
+            if not self.session_ok():
+                return self.json_out({"error": "auth"}, 401)
+            try:
+                limit = int((qs.get("limit") or ["40"])[0])
+            except ValueError:
+                limit = 40
+            conn = get_db()
+            try:
+                rows = ops.audit_tail(conn, limit)
+            finally:
+                conn.close()
+            return self.json_out({"ok": True, "rows": rows})
+
         if path == "/api/admin/leads":
             if not self.session_ok():
                 return self.json_out({"error": "auth"}, 401)
@@ -998,9 +1128,19 @@ class Handler(BaseHTTPRequestHandler):
                 LOGIN_TRIES.pop(ip, None)
                 token = secrets.token_urlsafe(24)
                 SESSIONS[token] = datetime.datetime.now() + datetime.timedelta(hours=8)
+                conn = get_db()
+                try:
+                    ops.audit(conn, "вхід в адмінку", ip)
+                finally:
+                    conn.close()
                 return self.redirect("/admin", cookie=(
                     f"sid={token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=28800"))
             LOGIN_TRIES[ip] = recent_fails + [datetime.datetime.now()]
+            conn = get_db()
+            try:
+                ops.audit(conn, "невдалий вхід", ip)
+            finally:
+                conn.close()
             time.sleep(0.4)                                    # замедляем перебор
             return self.send(200, tpl("login.html").replace(
                 "{{ERROR}}", '<p class="err">Невірний пароль</p>'))
@@ -1021,10 +1161,14 @@ class Handler(BaseHTTPRequestHandler):
             conn = get_db()
             if data.get("action") == "delete":
                 conn.execute("DELETE FROM leads WHERE id=?", (int(data.get("id") or 0),))
+                ops.audit(conn, "заявку видалено", f"#{data.get('id')}")
             else:
                 conn.execute("UPDATE leads SET status=?, note=? WHERE id=?",
                              ((data.get("status") or "new")[:20],
                               (data.get("note") or "")[:800], int(data.get("id") or 0)))
+                st_map = {"new": "нова", "done": "опрацьовано", "cancelled": "скасована"}
+                ops.audit(conn, "заявку оновлено", f"#{data.get('id')}",
+                          f"статус: {st_map.get(data.get('status') or 'new', data.get('status'))}")
             conn.commit()
             conn.close()
             return self.json_out({"ok": True})
@@ -1032,6 +1176,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/admin/service":
             conn = get_db()
             action, sid = data.get("action"), int(data.get("id") or 0)
+            ops.audit(conn, {"update": "послугу змінено", "add": "послугу додано",
+                             "delete": "послугу видалено"}.get(action, "послуги: " + str(action)),
+                      f"#{sid}")
             if action == "update":
                 conn.execute("""UPDATE services SET title=?, price=?, note=?, base=?, active=?, photo=? WHERE id=?""",
                              ((data.get("title") or "").strip()[:120],
@@ -1087,6 +1234,7 @@ class Handler(BaseHTTPRequestHandler):
             for key in CONTACT_DEFAULTS:                     # плоские ключи из формы админки
                 if "c_" + key in data:
                     put_setting(conn, "c_" + key, str(data["c_" + key]).strip()[:200])
+            ops.audit(conn, "налаштування збережено")
             conn.commit()
             conn.close()
             return self.json_out({"ok": True})
@@ -1101,9 +1249,15 @@ class Handler(BaseHTTPRequestHandler):
             new = data.get("new") or ""
             if not verify_password(old):
                 return self.json_out({"ok": False, "error": "Поточний пароль невірний"}, 400)
-            if len(new) < 8:
-                return self.json_out({"ok": False, "error": "Новий пароль — мінімум 8 символів"}, 400)
+            problem = password_problem(new)
+            if problem:
+                return self.json_out({"ok": False, "error": problem}, 400)
             set_password(new)
+            conn = get_db()
+            try:
+                ops.audit(conn, "пароль змінено")
+            finally:
+                conn.close()
             return self.json_out({"ok": True})
 
         return self.send(404, "Не знайдено")
@@ -1279,10 +1433,17 @@ class Server(ThreadingHTTPServer):
 if __name__ == "__main__":
     seed()
     load_auth()
+    if "--backup" in sys.argv:
+        path = ops.backup_db(DB_PATH, BACKUPS_DIR)
+        print(f"Копія бази: {path}")
+        raise SystemExit(0)
     print(f"Сайт:    {SITE_URL}/")
     print(f"Адмінка: http://127.0.0.1:{PORT}/admin")
     print(f"Пароль адмінки: {INITIAL_PASSWORD} (змінюється в адмінці, зберігається хешем)")
+    if is_default_password():
+        print("УВАГА: стоїть демо-пароль. Змініть його в адмінці до показу клієнту.")
     threading.Thread(target=reminder_loop, daemon=True).start()
+    threading.Thread(target=backup_loop, daemon=True).start()
     try:
         Server((HOST, PORT), Handler).serve_forever()
     except OSError as e:

@@ -1,5 +1,6 @@
 # рантайм-данные: база и хеш пароля создаются при первом запуске
 data/
+.env
 __pycache__/
 *.pyc
 
@@ -7,3 +8,5 @@ __pycache__/
 assets_tmp/
 backup_v2/
 *.log
+backups/
+data/errors.log

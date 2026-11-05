@@ -48,7 +48,13 @@
     <div id="leads-box"><div class="empty">Завантаження…</div></div>
   </section>
 
-  <section class="panel" id="load">
+  <div class="alert warn" id="pwd-alert" hidden>
+    <b>Стоїть демо-пароль адмінки.</b> Змініть його до показу сайту клієнту — інакше в панель
+    зможе зайти будь-хто, кому ви дали посилання.
+    <a href="#security" class="alert-link">Змінити пароль →</a>
+  </div>
+
+<section class="panel" id="load">
     <div class="panel-head">
       <h2>Завантаження записів <span class="hint">тижневий календар</span></h2>
       <div class="panel-tools">
@@ -151,7 +157,17 @@
     </form>
   </section>
 
-  <section class="panel" id="security">
+  <section class="panel" id="ops">
+    <div class="panel-head">
+      <h2>Стан системи <span class="hint">резервні копії та журнал дій</span></h2>
+      <div class="panel-tools"><button class="btn btn-ghost btn-sm" id="ops-refresh">Оновити</button></div>
+    </div>
+    <div class="ops-grid" id="ops-box"><div class="empty">Завантаження…</div></div>
+    <h3 class="h3-sub">Журнал дій</h3>
+    <div id="audit-box"><div class="empty">Завантаження…</div></div>
+  </section>
+
+<section class="panel" id="security">
     <div class="panel-head"><h2>Пароль адміністратора</h2></div>
     <form class="settings-form" id="pw-form">
       <label>Поточний пароль
