@@ -453,6 +453,20 @@ _, abody2, _ = get("/api/admin/audit?limit=10", cookie)
 check("журнал фіксує збереження налаштувань",
       any("налаштування" in r["action"] for r in json.loads(abody2)["rows"]))
 
+
+# ---------- регрессия: текст кнопок не должен сливаться с фоном ----------
+_css_path = _os.path.join(_here, "static", "style.css")
+_css = open(_css_path, encoding="utf-8").read()
+_legal_rule = [ln for ln in _css.splitlines() if ln.strip().startswith(".legal a")]
+check("CSS: ссылки в юридических текстах не перебивают цвет кнопок",
+      _legal_rule and all(":not(.btn)" in ln for ln in _legal_rule), _legal_rule[:2])
+
+st, priv, _ = get("/privacy")
+check("на сторінці політики кнопка повернення без 'голого' посилання",
+      'class="btn btn-accent" href="/"' in priv and "Повернутися на сайт" in priv)
+check("на /privacy телефон підставляється з налаштувань, без плейсхолдерів",
+      "{{" not in priv and 'href="tel:' in priv)
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)
