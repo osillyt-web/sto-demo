@@ -200,6 +200,115 @@ settings = json.loads(body) if status == 200 else {}
 check("настройки Telegram: токен не отдаётся открытым",
       status == 200 and settings.get("tg_token") is None and settings.get("tg_token_set") in ("0", "1"))
 
+# ---------- слоты записи, источник заявки, портфолио, 404 ----------
+status, body, _ = get("/api/slots/days")
+days = json.loads(body) if status == 200 else {}
+check("GET /api/slots/days: 14 днів і місткість", status == 200 and len(days.get("days", [])) == 14
+      and isinstance(days.get("capacity"), int), len(days.get("days", [])))
+
+open_days = [d for d in days.get("days", []) if not d["closed"] and d["free"] > 0]
+check("є відкриті дні з вільними годинами", len(open_days) >= 10, len(open_days))
+check("неділя позначена як зачинена",
+      any(d["closed"] for d in days.get("days", []) if d["weekday"] == "Нд"))
+
+status, body, _ = post("/api/leads", {"kind": "callback", "phone": "".join(["+380", "93", "112", "77", "88"]), "consent": "1"})
+cb_id = json.loads(body).get("id") if status == 200 else None
+check("зворотний дзвінок приймається без імені", status == 200 and cb_id, status)
+if cb_id:
+    _, body, _ = get("/api/admin/leads", cookie)
+    cb = [l for l in json.loads(body)["leads"] if l["id"] == cb_id]
+    check("зворотний дзвінок позначено як callback", cb and cb[0]["kind"] == "callback")
+
+test_day = open_days[-1] if open_days else None
+status, body, _ = get("/api/slots?date=" + (test_day["date"] if test_day else ""))
+slot_day = json.loads(body) if status == 200 else {}
+slots = slot_day.get("slots", [])
+check("GET /api/slots: години робочого дня", status == 200 and len(slots) >= 8, len(slots))
+check("у слотах є статуси вільно/зайнято", all("state" in s and "free" in s for s in slots))
+
+cap = slot_day.get("capacity", 2)
+free_slot = next((s for s in slots if s["state"] == "free"), None)
+slot_leads = []
+if free_slot:
+    lead_common = {"name": "Слот Тест", "phone": "".join(["+380", "93", "112", "44", "55"]), "consent": "1",
+                   "service": titles[0], "slot_date": test_day["date"], "slot_time": free_slot["time"],
+                   "utm_source": "google", "utm_medium": "cpc", "utm_campaign": "selftest"}
+    codes = []
+    for _ in range(cap + 1):
+        st_code, st_body, _ = post("/api/leads", dict(lead_common))
+        codes.append(st_code)
+        if st_code == 200:
+            slot_leads.append(json.loads(st_body).get("id"))
+    check(f"слот приймає рівно {cap} заявки", codes[:cap] == [200] * cap and codes[-1] == 409, codes)
+
+    status, body, _ = post("/api/leads", dict(lead_common, slot_date="", slot_time=""))
+    check("без вільного часу заявка проходить (необовʼязково)", status == 200, status)
+    if status == 200:
+        slot_leads.append(json.loads(body).get("id"))
+
+    _, body, _ = get("/api/admin/leads", cookie)
+    saved = [l for l in json.loads(body)["leads"] if l["name"] == "Слот Тест"]
+    check("у заявці збережено дату й час слота",
+          any(l["slot_date"] == test_day["date"] and l["slot_time"] == free_slot["time"] for l in saved))
+    check("у заявці збережено джерело з UTM",
+          any(l["utm_source"] == "google" and l["utm_campaign"] == "selftest" for l in saved))
+
+status, body, _ = get("/api/admin/calendar?days=7", cookie)
+cal = json.loads(body) if status == 200 else {}
+check("календар завантаження: 7 днів і сітка годин",
+      status == 200 and len(cal.get("grid", [])) == 7 and len(cal.get("times", [])) >= 8)
+check("календар показує зайняті години",
+      any(s["booked"] > 0 for d in cal.get("grid", []) for s in d["slots"]) or not slot_leads,
+      sum(s["booked"] for d in cal.get("grid", []) for s in d["slots"]))
+
+status, body, _ = get("/cases")
+check("сторінка портфоліо відкривається", status == 200 and "Портфоліо" in body, status)
+check("у портфоліо три кейси", body.count('class="case"') == 3, body.count('class="case"'))
+check("у портфоліо немає плейсхолдерів", "{{" not in body)
+status, body, _ = get("/sitemap.xml")
+check("sitemap містить /cases", "/cases" in body)
+
+try:
+    status, body, _ = get("/takoi-storinky-nema")
+    check("404 віддає сторінку, а не порожнечу", False, status)
+except urllib.error.HTTPError as e:
+    body = e.read().decode("utf-8")
+    check("404 віддає зрозумілу сторінку", e.code == 404 and "404" in body and 'href="/"' in body, e.code)
+
+# контакты из админки меняют сайт
+status, body, _ = get("/api/admin/settings", cookie)
+base_contacts = json.loads(body)["contacts"] if status == 200 else {}
+status, _, _ = post("/admin/settings", {"c_phone": "+380 44 777-77-77", "c_phone_raw": "+380447777777",
+                                        "c_address": base_contacts.get("address", ""),
+                                        "c_hours": base_contacts.get("hours", ""),
+                                        "c_telegram": base_contacts.get("telegram", ""),
+                                        "c_viber": base_contacts.get("viber", ""),
+                                        "c_whatsapp": base_contacts.get("whatsapp", ""),
+                                        "c_reviews_url": base_contacts.get("reviews_url", ""),
+                                        "c_reviews_note": base_contacts.get("reviews_note", "")}, cookie)
+_, html_c, _ = get("/")
+check("телефон з адмінки зʼявляється на сайті", "+380 44 777-77-77" in html_c)
+post("/admin/settings", {"c_phone": base_contacts.get("phone", ""),
+                         "c_phone_raw": base_contacts.get("phone_raw", ""),
+                         "c_address": base_contacts.get("address", ""),
+                         "c_hours": base_contacts.get("hours", ""),
+                         "c_telegram": base_contacts.get("telegram", ""),
+                         "c_viber": base_contacts.get("viber", ""),
+                         "c_whatsapp": base_contacts.get("whatsapp", ""),
+                         "c_reviews_url": base_contacts.get("reviews_url", ""),
+                         "c_reviews_note": base_contacts.get("reviews_note", "")}, cookie)
+_, html_c2, _ = get("/")
+check("демо-контакти відновлено після тесту", base_contacts.get("phone", "") in html_c2)
+
+check("на головній є блок гарантії та месенджери",
+      'id="guarantee"' in html2 and html2.count("msgr-btn") >= 3 and 'id="callback-form"' in html2)
+check("на головній є вибір дати й часу", 'id="days"' in html2 and 'id="times"' in html2
+      and 'id="slot-data"' in html2)
+
+for lid in slot_leads + ([cb_id] if cb_id else []):
+    if lid:
+        post("/admin/lead", {"action": "delete", "id": lid}, cookie)
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)

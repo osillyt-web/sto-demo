@@ -5,6 +5,39 @@
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const money = (n) => Math.round(n / 10) * 10;
 
+  /* ---------- источник заявки (UTM / переход) ---------- */
+  const src = (() => {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem("at_src") || "null"); } catch (e) {}
+    if (saved && typeof saved === "object") return saved;
+    const q = new URLSearchParams(location.search);
+    const get = k => (q.get(k) || "").slice(0, 60);
+    let ref = "";
+    try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : ""; } catch (e) {}
+    if (ref === location.hostname) ref = "";
+    const data = { utm_source: get("utm_source"), utm_medium: get("utm_medium"),
+                   utm_campaign: get("utm_campaign"), referrer: ref };
+    try { sessionStorage.setItem("at_src", JSON.stringify(data)); } catch (e) {}
+    return data;
+  })();
+  const srcFields = () => ({ utm_source: src.utm_source, utm_medium: src.utm_medium,
+                             utm_campaign: src.utm_campaign, referrer: src.referrer });
+
+  /* маска телефона: последние 9 цифр как национальный номер */
+  function maskPhone(input) {
+    let d = input.value.replace(/\D/g, "");
+    if (d.length > 12) d = d.slice(-12);
+    let out = d;
+    if (d.length >= 9) {
+      const nat = d.slice(-9);
+      out = `+380 ${nat.slice(0, 2)} ${nat.slice(2, 5)} ${nat.slice(5, 7)} ${nat.slice(7, 9)}`;
+    }
+    if (input.value !== out) {
+      input.value = out;
+      try { input.setSelectionRange(out.length, out.length); } catch (e) {}
+    }
+  }
+
   /* ---------- мобильное меню ---------- */
   const burger = $("#burger");
   const menu = $("#mobile-menu");
@@ -59,6 +92,8 @@
       priceEl.textContent = "—";
       hintEl.textContent = "Оберіть хоча б одну послугу";
       if (estimateField) estimateField.value = "";
+      const estLine0 = $("#est-line");
+      if (estLine0) estLine0.hidden = true;
       return;
     }
     const mult = currentClassMult();
@@ -68,6 +103,11 @@
     priceEl.textContent = `від ${from.toLocaleString("uk-UA")} до ${to.toLocaleString("uk-UA")} ₴`;
     hintEl.textContent = `${plural(checked.length)} · коефіцієнт класу ${mult.toFixed(2)}`;
     if (estimateField) estimateField.value = `${from}–${to} ₴`;
+    const estLine = $("#est-line"), estSum = $("#est-sum");
+    if (estLine && estSum) {
+      estSum.textContent = `від ${from.toLocaleString("uk-UA")} до ${to.toLocaleString("uk-UA")} ₴`;
+      estLine.hidden = false;
+    }
   }
 
   if (calcForm) {
@@ -93,23 +133,32 @@
   function headerOffset() { return (topBar ? topBar.offsetHeight : 0) + 6; }
 
   let scrollAnim = null;
+  let scrollRestore = null;
   function cancelScrollAnim() {
     if (scrollAnim !== null) { cancelAnimationFrame(scrollAnim); scrollAnim = null; }
+    if (scrollRestore) { scrollRestore(); scrollRestore = null; }
   }
 
   function smoothTo(targetY, duration = 520) {
     cancelScrollAnim();
+    // CSS scroll-behavior:smooth конфликтует с покадровой анимацией —
+    // на время анимации отключаем его, иначе прокрутка ползёт рывками
+    const html = document.documentElement;
+    const prevBehavior = html.style.scrollBehavior;
+    html.style.scrollBehavior = "auto";
+    scrollRestore = () => { html.style.scrollBehavior = prevBehavior; };
     const startY = window.scrollY;
     const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
     const endY = Math.min(Math.max(0, targetY), maxY);
     const dist = endY - startY;
-    if (Math.abs(dist) < 2) return;
+    if (Math.abs(dist) < 2) { if (scrollRestore) { scrollRestore(); scrollRestore = null; } return; }
     const t0 = performance.now();
     const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     function step(now) {
       const p = Math.min(1, (now - t0) / duration);
       window.scrollTo(0, startY + dist * ease(p));
-      scrollAnim = p < 1 ? requestAnimationFrame(step) : null;
+      if (p < 1) { scrollAnim = requestAnimationFrame(step); }
+      else { scrollAnim = null; if (scrollRestore) { scrollRestore(); scrollRestore = null; } }
     }
     scrollAnim = requestAnimationFrame(step);
   }
@@ -126,7 +175,8 @@
     const target = document.getElementById(id);
     if (!target) return;
     e.preventDefault();
-    smoothTo(target.getBoundingClientRect().top + window.scrollY - headerOffset());
+    // #top — это фиксированная шапка: её rect.top считается от экрана, не от начала документа
+    smoothTo(id === "top" ? 0 : target.getBoundingClientRect().top + window.scrollY - headerOffset());
     history.pushState(null, "", "#" + id);
   });
 
@@ -175,30 +225,150 @@
     });
   });
 
+  /* ---------- выбор даты и времени (живые слоты) ---------- */
+  const slotUI = (() => {
+    const box = $("#days"), times = $("#times"), hidDate = $("#slot-date"),
+          hidTime = $("#slot-time"), empty = $("#slot-empty"), legend = $("#slot-legend");
+    if (!box || !times || !hidDate) return null;
+    const dataEl = document.getElementById("slot-data");
+    let days = [];
+    try { days = JSON.parse(dataEl ? dataEl.textContent : "[]"); } catch (e) { days = []; }
+    let active = "";
+
+    const note = d => d.closed ? "зачинено" : (d.free ? d.free + " вільно" : "зайнято");
+
+    function renderDays() {
+      box.innerHTML = days.map(d => {
+        const off = d.closed || !d.free;
+        return `<button class="day${d.date === active ? " is-active" : ""}" type="button" data-date="${d.date}"
+                 ${off ? "disabled" : ""} aria-pressed="${d.date === active}">
+                 <b>${d.label}</b><span>${d.day}.${d.month}</span><small>${note(d)}</small></button>`;
+      }).join("");
+    }
+
+    function renderTimes(slots) {
+      const free = slots.filter(x => x.state === "free");
+      empty.hidden = free.length > 0;
+      if (!free.length) empty.textContent = "На цей день вільних годин немає — оберіть інший день.";
+      times.innerHTML = slots.filter(x => x.state !== "closed").map(x => {
+        const dis = x.state !== "free";
+        const label = x.state === "past" ? "минуло"
+                    : x.state === "full" ? "зайнято"
+                    : x.free === 1 ? "1 місце" : x.free + " місця";
+        return `<button class="time${hidTime.value === x.time ? " is-active" : ""}" type="button"
+                 data-time="${x.time}" ${dis ? "disabled" : ""}>${x.time}<small>${label}</small></button>`;
+      }).join("");
+    }
+
+    async function openDay(date, keepTime) {
+      active = date;
+      hidDate.value = date;
+      if (!keepTime) hidTime.value = "";
+      renderDays();
+      times.innerHTML = '<span class="slot-legend">Завантажуємо вільні години…</span>';
+      try {
+        const j = await (await fetch("/api/slots?date=" + encodeURIComponent(date))).json();
+        renderTimes(j.slots || []);
+      } catch (e) {
+        times.innerHTML = "";
+        empty.hidden = false;
+        empty.textContent = "Не вдалося завантажити час — оновіть сторінку.";
+      }
+    }
+
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest(".day");
+      if (b && !b.disabled) openDay(b.dataset.date);
+    });
+
+    times.addEventListener("click", (e) => {
+      const b = e.target.closest(".time");
+      if (!b || b.disabled) return;
+      [...times.querySelectorAll(".time")].forEach(x => x.classList.remove("is-active"));
+      b.classList.add("is-active");
+      hidTime.value = b.dataset.time;
+      if (legend) legend.textContent = "Час обрано — натисніть «Записатись»";
+    });
+
+    async function refresh() {
+      try {
+        const j = await (await fetch("/api/slots/days")).json();
+        days = j.days || days;
+      } catch (e) {}
+      const keep = active;
+      hidDate.value = "";
+      hidTime.value = "";
+      active = "";
+      renderDays();
+      if (keep) openDay(keep);
+    }
+
+    renderDays();
+    const first = days.find(d => !d.closed && d.free);
+    if (first) openDay(first.date);
+    return { refresh, get date() { return hidDate.value; }, get time() { return hidTime.value; } };
+  })();
+
+  /* ---------- ближайшее окно в hero-карточке ---------- */
+  const nextSlotEl = $("#next-slot");
+  if (nextSlotEl) {
+    (async () => {
+      try {
+        const j = await (await fetch("/api/slots/days")).json();
+        for (const d of (j.days || [])) {
+          if (d.closed || !d.free) continue;
+          const s = await (await fetch("/api/slots?date=" + encodeURIComponent(d.date))).json();
+          const free = (s.slots || []).find(x => x.state === "free");
+          if (free) { nextSlotEl.textContent = `${d.label}, ${free.time}`; return; }
+        }
+        nextSlotEl.textContent = "Зателефонуйте — підберемо час";
+      } catch (e) { nextSlotEl.textContent = "Зателефонуйте — підберемо час"; }
+    })();
+  }
+
+  /* ---------- обратный звонок ---------- */
+  const cbForm = $("#callback-form");
+  if (cbForm) {
+    const cbMsg = $("#callback-msg");
+    const cbPhone = cbForm.querySelector('input[name="phone"]');
+    cbPhone?.addEventListener("input", () => maskPhone(cbPhone));
+    cbForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      cbMsg.className = "callback-msg";
+      if (cbPhone.value.replace(/\D/g, "").length !== 12) {
+        cbMsg.textContent = "Вкажіть номер у форматі +380 XX XXX XX XX";
+        cbMsg.classList.add("err");
+        cbPhone.focus();
+        return;
+      }
+      const btn = cbForm.querySelector("button");
+      btn.disabled = true;
+      try {
+        const body = new URLSearchParams(Object.assign({ kind: "callback", phone: cbPhone.value, consent: "1" }, srcFields()));
+        const r = await (await fetch("/api/leads", { method: "POST", body })).json();
+        if (r.ok) {
+          cbMsg.textContent = "Прийнято — передзвонимо протягом 15 хвилин.";
+          cbForm.reset();
+          window.hit && window.hit("lead_sent");
+        } else {
+          cbMsg.textContent = r.error || "Не вдалося — зателефонуйте нам";
+          cbMsg.classList.add("err");
+        }
+      } catch (err) {
+        cbMsg.textContent = "Немає зв'язку з сервером";
+        cbMsg.classList.add("err");
+      } finally { btn.disabled = false; }
+    });
+  }
+
   /* ---------- форма записи ---------- */
   const form = $("#lead-form");
   const msg = $("#form-msg");
-  const whenInput = $("#when-at");
-
-  if (whenInput) whenInput.min = new Date().toISOString().slice(0, 10);
+  /* выбор даты и времени теперь в блоке слотов — см. модуль ниже */
 
   if (form) {
     const phone = form.querySelector('input[name="phone"]');
-    phone?.addEventListener("input", () => {
-      // берём последние 9 цифр как национальный номер — так маска не ломается,
-      // когда человек набирает 0..., 380... или вставляет готовый номер
-      let d = phone.value.replace(/\D/g, "");
-      if (d.length > 12) d = d.slice(-12);
-      let out = d;
-      if (d.length >= 9) {
-        const nat = d.slice(-9);
-        out = `+380 ${nat.slice(0, 2)} ${nat.slice(2, 5)} ${nat.slice(5, 7)} ${nat.slice(7, 9)}`;
-      }
-      if (phone.value !== out) {
-        phone.value = out;
-        try { phone.setSelectionRange(out.length, out.length); } catch (e) {}
-      }
-    });
+    phone?.addEventListener("input", () => maskPhone(phone));
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -227,6 +397,13 @@
         }
       }
 
+      if (slotUI && (!slotUI.date || !slotUI.time)) {
+        msg.textContent = "Оберіть день і час — інакше не забронюємо місце";
+        msg.classList.add("err");
+        document.getElementById("days")?.scrollIntoView({ block: "center" });
+        return;
+      }
+
       const btn = form.querySelector('button[type="submit"]');
       const label = btn.textContent;
       btn.disabled = true;
@@ -234,7 +411,8 @@
       msg.textContent = "";
 
       try {
-        const res = await fetch("/api/leads", { method: "POST", body: new URLSearchParams(new FormData(form)) });
+        const payload = Object.assign(Object.fromEntries(new FormData(form)), srcFields());
+        const res = await fetch("/api/leads", { method: "POST", body: new URLSearchParams(payload) });
         const data = await res.json();
         if (data.ok) {
           msg.textContent = "Дякуємо! Заявку прийнято — передзвонимо протягом 15 хвилин.";
@@ -242,6 +420,9 @@
           msg.classList.add("ok");
           form.reset();
           if (estimateField) estimateField.value = "";
+          const estLine1 = $("#est-line");
+          if (estLine1) estLine1.hidden = true;
+          if (slotUI) slotUI.refresh();
           if (calcData) recalc();
         } else {
           msg.textContent = data.error || "Не вдалося надіслати заявку";

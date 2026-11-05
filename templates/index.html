@@ -17,7 +17,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
-<link rel="preload" as="image" href="/static/img/hero.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/static/img/hero.webp"
+      imagesrcset="/static/img/hero-sm.webp 760w, /static/img/hero.webp 1920w" imagesizes="100vw"
+      fetchpriority="high">
 <link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
 <script type="application/ld+json">{{JSONLD}}</script>
 <script type="application/ld+json">{{JSONLD_FAQ}}</script>
@@ -39,9 +41,17 @@
       <a href="#contacts">Контакти</a>
     </nav>
     <div class="top-actions">
-      <a class="phone" href="tel:+380440000000">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
-        <span>+380 44 000-00-00</span>
+      <div class="top-msgr">
+        <a class="tm tm-tg" href="{{C_TELEGRAM}}" target="_blank" rel="noopener" aria-label="Написати в Telegram">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 19 19.1c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.6 8.4-7.6c.4-.3-.1-.5-.5-.2L7.6 13.2 3.2 11.8c-1-.3-1-1 .2-1.4l17-6.6c.8-.3 1.5.2 1.5 1.5z"/></svg>
+        </a>
+        <a class="tm tm-vb" href="{{C_VIBER}}" aria-label="Написати у Viber">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c4.9 0 9 3.4 9 7.6 0 4.2-4.1 7.6-9 7.6-1 0-2-.1-2.9-.4L5 19v-3.2C3.2 14.4 3 12.4 3 9.6 3 5.4 7.1 2 12 2zm3.7 11.4c-.3.8-1.6 1.5-2.3 1.5-.7 0-2.7-1-4-2.4-1.3-1.4-2-3-2-3.6 0-.7.6-1.9 1.3-2.1.3-.1.6 0 .8.3l.8 1.3c.1.3.1.5-.1.7l-.4.5c-.1.2-.2.4 0 .6.3.5.8 1.1 1.3 1.5.5.4 1 .7 1.3.8.2.1.4 0 .5-.1l.5-.5c.2-.2.4-.2.6-.1l1.4.7c.3.2.3.5.3.9z"/></svg>
+        </a>
+      </div>
+      <a class="phone" href="tel:{{C_PHONE_RAW}}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+        <span>{{C_PHONE}}</span>
       </a>
       <a class="btn btn-accent" href="#book">Записатись</a>
       <button class="burger" id="burger" aria-label="Меню" aria-expanded="false">
@@ -56,13 +66,22 @@
     <a href="#prices">Ціни</a>
     <a href="#reviews">Відгуки</a>
     <a href="#contacts">Контакти</a>
+    <a href="/cases">Портфоліо</a>
     <a class="btn btn-accent" href="#book">Записатись</a>
+    <div class="menu-msgr">
+      <a href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Telegram</a>
+      <a href="{{C_VIBER}}">Viber</a>
+      <a href="{{C_WHATSAPP}}" target="_blank" rel="noopener">WhatsApp</a>
+    </div>
   </div>
 </header>
 
 <section class="hero">
   <div class="hero-bg" aria-hidden="true">
-    <img src="/static/img/hero.webp" width="1920" height="1080" alt="" fetchpriority="high" decoding="async">
+    <picture>
+      <source media="(max-width: 760px)" srcset="/static/img/hero-sm.webp">
+      <img src="/static/img/hero.webp" width="1920" height="1080" alt="" fetchpriority="high" decoding="async">
+    </picture>
   </div>
   <div class="wrap hero-inner">
     <div class="hero-copy">
@@ -83,7 +102,7 @@
 
     <div class="hero-card" data-reveal>
       <p class="mini">Найближчий вільний слот</p>
-      <p class="slot">Сьогодні, 15:30</p>
+      <p class="slot" id="next-slot">—</p>
       <div class="slot-row">
         <span class="chip">Діагностика</span>
         <span class="chip">ТО</span>
@@ -249,7 +268,7 @@
 <section id="reviews" class="section section-alt">
   <div class="wrap">
     <div class="sec-head"><div><h2>Відгуки клієнтів</h2>
-      <p class="sub">Середня оцінка 4.9 з 5 за 213 відгуками в Google.</p></div></div>
+      <p class="sub">{{C_REVIEWS_NOTE}} · <a class="link-more" href="{{C_REVIEWS_URL}}" target="_blank" rel="noopener">Читати в Google →</a></p></div></div>
     <div class="reviews">
       {{REVIEWS}}
     </div>
@@ -259,7 +278,8 @@
 <section class="section" id="about">
   <div class="wrap two-col about-wrap">
     <div class="about-photo">
-      <img src="/static/img/master.webp" width="1422" height="1067" loading="lazy" decoding="async"
+      <img src="/static/img/master.webp" srcset="/static/img/master-sm.webp 760w, /static/img/master.webp 1422w"
+           sizes="(max-width: 760px) 92vw, 46vw" width="1422" height="1067" loading="lazy" decoding="async"
            alt="Майстер АвтоТочка за роботою">
     </div>
     <div class="about-copy">
@@ -272,6 +292,19 @@
         <li>Не нав'язуємо комплекс: робимо тільки те, що потрібно.</li>
       </ul>
       <a class="btn btn-ghost" href="#book">Записатись до майстра</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="guarantee">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>Гарантія і прозорість</h2>
+      <p class="sub">Це не обіцянки на словах — кожен пункт зафіксований у замовленні.</p></div></div>
+    <div class="trust">
+      <article class="trust-card"><b>12 місяців</b><span>Гарантія на виконані роботи письмово. Запчастини, які ставимо ми, — гарантія виробника.</span></article>
+      <article class="trust-card"><b>Ціна до робіт</b><span>Суму погоджуємо до початку і не змінюємо без вашої згоди. Жодних «доплат за складність».</span></article>
+      <article class="trust-card"><b>Фото-звіт</b><span>Фотографуємо етапи й зняті деталі, надсилаємо в чат. Ви бачите, за що платите.</span></article>
+      <article class="trust-card"><b>Заміна авто</b><span>Якщо не встигаємо в строк — попереджаємо заздалегідь і даємо підміну або пріоритет.</span></article>
     </div>
   </div>
 </section>
@@ -311,14 +344,19 @@
             <input type="text" name="car" placeholder="Volkswagen Golf 2019" autocomplete="off">
           </label>
         </div>
-        <div class="field-row">
-          <label>Бажана дата
-            <input type="date" name="when_at">
-          </label>
-          <label>Орієнтовна сума
-            <input type="text" name="estimate" id="estimate-field" placeholder="з калькулятора" readonly>
-          </label>
+        <div class="slot-pick">
+          <div class="slot-head">
+            <span class="slot-title">Коли приїхати</span>
+            <span class="slot-legend" id="slot-legend">Вільні години — наживо</span>
+          </div>
+          <div class="days" id="days" role="group" aria-label="Оберіть день"></div>
+          <div class="times" id="times" role="group" aria-label="Оберіть час"></div>
+          <p class="slot-empty" id="slot-empty" hidden>На цей день вільних годин немає — оберіть інший.</p>
+          <input type="hidden" name="slot_date" id="slot-date">
+          <input type="hidden" name="slot_time" id="slot-time">
         </div>
+        <input type="hidden" name="estimate" id="estimate-field">
+        <p class="est-line" id="est-line" hidden>Орієнтовна сума з калькулятора: <b id="est-sum">—</b></p>
         <label>Коментар
           <textarea name="comment" rows="3" placeholder="Що турбує, коли зручно приїхати"></textarea>
         </label>
@@ -335,13 +373,30 @@
 
     <aside class="book-aside">
       <h3>Контакти</h3>
-      <p class="mini">Працюємо Пн–Сб, 9:00–19:00. Неділя — за домовленістю для кузовних робіт.</p>
+      <p class="mini">Працюємо {{C_HOURS}}. Неділя — за домовленістю для кузовних робіт.</p>
       <ul class="contacts-list">
-        <li><span>Адреса</span><b>Київ, вул. Автосервісна, 12</b></li>
-        <li><span>Телефон</span><a href="tel:+380440000000">+380 44 000-00-00</a></li>
-        <li><span>Telegram</span><a href="https://t.me/share/url?url={{SITE_URL}}" target="_blank" rel="noopener">Написати в Telegram</a></li>
-        <li><span>Viber</span><a href="viber://chat?number=%2B380440000000">Написати у Viber</a></li>
+        <li><span>Адреса</span><b>{{C_ADDRESS}}</b></li>
+        <li><span>Телефон</span><a href="tel:{{C_PHONE_RAW}}">{{C_PHONE}}</a></li>
       </ul>
+      <div class="msgr">
+        <a class="msgr-btn msgr-tg" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 19 19.1c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.6 8.4-7.6c.4-.3-.1-.5-.5-.2L7.6 13.2 3.2 11.8c-1-.3-1-1 .2-1.4l17-6.6c.8-.3 1.5.2 1.5 1.5z"/></svg>
+          Telegram</a>
+        <a class="msgr-btn msgr-vb" href="{{C_VIBER}}">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c4.9 0 9 3.4 9 7.6 0 4.2-4.1 7.6-9 7.6-1 0-2-.1-2.9-.4L5 19v-3.2C3.2 14.4 3 12.4 3 9.6 3 5.4 7.1 2 12 2z"/></svg>
+          Viber</a>
+        <a class="msgr-btn msgr-wa" href="{{C_WHATSAPP}}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.4A10 10 0 1 0 12 2zm0 2a8 8 0 0 1 0 16 8 8 0 0 1-4.2-1.2l-.4-.2-2.6.7.7-2.5-.2-.4A8 8 0 0 1 12 4z"/><path d="M9.6 8.2c.2 0 .3.1.4.3l.6 1.4c.1.2 0 .4-.1.5l-.4.4c-.1.1-.2.3 0 .6.3.5.9 1.1 1.4 1.4.3.2.4.1.6 0l.4-.5c.1-.1.3-.2.5-.1l1.4.7c.2.1.3.2.3.4 0 .2-.1.8-.4 1.1-.3.3-.9.4-1.3.4-1.2 0-2.9-1-3.9-2.4-.9-1.3-1.2-2.4-1-3 .1-.4.5-1 .9-1.1z"/></svg>
+          WhatsApp</a>
+      </div>
+      <form class="callback" id="callback-form">
+        <p class="callback-title">Передзвонити за 30 секунд</p>
+        <div class="callback-row">
+          <input type="tel" name="phone" placeholder="+380 __ ___ __ __" inputmode="tel" autocomplete="tel" aria-label="Телефон для зворотного дзвінка">
+          <button class="btn btn-accent" type="submit">Передзвоніть</button>
+        </div>
+        <p class="callback-msg" id="callback-msg" role="status" aria-live="polite"></p>
+      </form>
       <a class="map-box" href="https://maps.google.com/?q=Kyiv,+%D0%B2%D1%83%D0%BB.+%D0%90%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D1%96%D1%81%D0%BD%D0%B0,+12"
          target="_blank" rel="noopener">
         <span class="map-grid" aria-hidden="true"></span>
@@ -360,8 +415,8 @@
         <span class="brand-mark">AT</span>
         <span class="brand-text"><b>АвтоТочка</b><small>СТО · детейлінг</small></span>
       </a>
-      <p class="mini">Київ, вул. Автосервісна, 12 · Пн–Сб 9:00–19:00<br>
-        <a href="tel:+380440000000">+380 44 000-00-00</a></p>
+      <p class="mini">{{C_ADDRESS}} · {{C_HOURS}}<br>
+        <a href="tel:{{C_PHONE_RAW}}">{{C_PHONE}}</a></p>
     </div>
     <div>
       <b>Послуги</b>
@@ -373,8 +428,15 @@
       <b>Інформація</b>
       <a href="#prices">Прайс</a>
       <a href="#reviews">Відгуки</a>
+      <a href="/cases">Портфоліо</a>
       <a href="/privacy">Політика конфіденційності</a>
     </div>
+  </div>
+  <div class="wrap foot-top">
+    <a class="to-top" href="#top" aria-label="Догори — на початок сторінки">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 19V6"/><path d="M6 12l6-6 6 6"/></svg>
+      <span>Догори</span>
+    </a>
   </div>
   <div class="wrap foot-bottom">
     <span>© {{YEAR}} АвтоТочка. Демо-сайт для портфоліо.</span>
@@ -394,6 +456,7 @@
   <img id="lb-img" src="" alt="">
 </div>
 
+<script type="application/json" id="slot-data">{{SLOT_DAYS}}</script>
 <script src="/static/app.js?v={{ASSET_V}}"></script>
 </body>
 </html>

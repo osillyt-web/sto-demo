@@ -48,6 +48,42 @@
     <div id="leads-box"><div class="empty">Завантаження…</div></div>
   </section>
 
+  <section class="panel" id="load">
+    <div class="panel-head">
+      <h2>Завантаження записів <span class="hint">тижневий календар</span></h2>
+      <div class="panel-tools">
+        <button class="btn btn-ghost btn-sm" id="cal-prev">← Тиждень</button>
+        <button class="btn btn-ghost btn-sm" id="cal-today">Сьогодні</button>
+        <button class="btn btn-ghost btn-sm" id="cal-next">Тиждень →</button>
+      </div>
+    </div>
+    <div id="cal-box"><div class="empty">Завантаження…</div></div>
+  </section>
+
+  <section class="panel" id="contacts">
+    <div class="panel-head"><h2>Контакти, слоти й відгуки</h2></div>
+    <p class="panel-sub">Ці поля одразу змінюють сайт: телефон у шапці, кнопки месенджерів,
+      адресу, графік і кількість місць на годину.</p>
+    <form class="settings-form" id="contacts-form">
+      <div class="form-grid">
+        <label>Телефон на сайті<input name="c_phone" placeholder="+380 44 000-00-00"></label>
+        <label>Телефон для дзвінка (tel:)<input name="c_phone_raw" placeholder="+380440000000"></label>
+        <label>Адреса<input name="c_address" placeholder="Київ, вул. Автосервісна, 12"></label>
+        <label>Графік роботи<input name="c_hours" placeholder="Пн–Сб, 9:00–19:00"></label>
+        <label>Telegram (посилання)<input name="c_telegram" placeholder="https://t.me/..."></label>
+        <label>Viber (посилання)<input name="c_viber" placeholder="viber://chat?number=%2B380..."></label>
+        <label>WhatsApp (посилання)<input name="c_whatsapp" placeholder="https://wa.me/380..."></label>
+        <label>Відгуки Google (посилання)<input name="c_reviews_url" placeholder="https://maps.google.com/..."></label>
+        <label>Оцінка для сайту<input name="c_reviews_note" placeholder="4.9 з 5 · 213 відгуків у Google"></label>
+        <label>Місць на годину<input name="slot_capacity" type="number" min="1" max="20" step="1"></label>
+        <label class="wide">Робочі години слотів<input name="slot_times" placeholder="09:00,10:00,11:00,..."></label>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-accent btn-sm" type="submit">Зберегти</button>
+      </div>
+    </form>
+  </section>
+
   <section class="panel">
     <div class="panel-head">
       <h2>Послуги та ціни</h2>

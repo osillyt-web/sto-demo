@@ -51,13 +51,17 @@
       <tr>
         <td class="hide-sm"><span class="sub-line">${esc(l.created_at)}</span></td>
         <td>
-          <b>${esc(l.name)}</b>
+          <b>${esc(l.name)}</b>${l.kind === "callback" ? ' <span class="badge cb">дзвінок</span>' : ""}
           <span class="sub-line"><a href="tel:${esc(l.phone)}">${esc(l.phone)}</a></span>
         </td>
         <td class="hide-sm">${esc(l.service) || '<span class="muted">—</span>'}
           <span class="sub-line">${esc(l.car) || "авто не вказано"}</span></td>
         <td class="hide-sm">
-          ${esc(l.when_at) || "дата не обрана"}
+          ${l.slot_date && l.slot_time
+              ? `<b class="slot-cell">${esc(l.slot_date)} · ${esc(l.slot_time)}</b>`
+              : (esc(l.when_at) || "дата не обрана")}
+          ${l.source ? `<span class="sub-line">Джерело: ${esc(l.source)}${
+              l.utm_campaign ? " · " + esc(l.utm_campaign) : ""}</span>` : ""}
           ${l.estimate ? `<span class="sub-line">Кошторис: ${esc(l.estimate)}</span>` : ""}
           ${l.comment ? `<span class="sub-line">«${esc(l.comment)}»</span>` : ""}
         </td>
@@ -120,6 +124,94 @@
         <tbody>${rows}</tbody>
       </table>`;
   }
+
+
+  /* ------------------------------ завантаження тижня ------------------------------ */
+  const calState = { start: null };
+
+  async function loadCalendar(startIso) {
+    const box = $("#cal-box");
+    if (!box) return;
+    const params = new URLSearchParams({ days: "7" });
+    if (startIso) params.set("start", startIso);
+    let data;
+    try { data = await api("/api/admin/calendar?" + params); } catch (e) { return; }
+    calState.start = data.start;
+    const grid = data.grid || [];
+    const head = grid.map(d => `<th>${d.weekday}<span class="sub-line">${d.day}</span></th>`).join("");
+    const rows = (data.times || []).map(t => {
+      const cells = grid.map(d => {
+        if (d.closed) return `<td class="cal-closed">—</td>`;
+        const cell = (d.slots || []).find(x => x.time === t);
+        const b = cell ? cell.booked : 0;
+        const cls = b >= data.capacity ? "cal-full" : (b ? "cal-busy" : "cal-free");
+        return `<td class="${cls}">${b ? b + "/" + data.capacity : "•"}</td>`;
+      }).join("");
+      return `<tr><th class="cal-time">${t}</th>${cells}</tr>`;
+    }).join("");
+
+    const list = (data.leads || []).length
+      ? `<div class="cal-leads">${data.leads.map(l => `
+          <div class="cal-lead">
+            <b>${esc(l.slot_date)} ${esc(l.slot_time)}</b>
+            <span>${esc(l.name)} · <a href="tel:${esc(l.phone)}">${esc(l.phone)}</a></span>
+            <span class="sub-line">${esc(l.service) || "послуга не вказана"}</span>
+          </div>`).join("")}</div>`
+      : `<p class="hint">На цей тиждень записів ще немає.</p>`;
+
+    box.innerHTML = `
+      <table class="cal-table">
+        <thead><tr><th></th>${head}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="hint">Клітинка — скільки авто зайнято з ${data.capacity} можливих на цю годину.</p>
+      ${list}`;
+  }
+
+  $("#cal-prev")?.addEventListener("click", () => {
+    const d = new Date(calState.start || new Date());
+    d.setDate(d.getDate() - 7);
+    loadCalendar(d.toISOString().slice(0, 10));
+  });
+  $("#cal-next")?.addEventListener("click", () => {
+    const d = new Date(calState.start || new Date());
+    d.setDate(d.getDate() + 7);
+    loadCalendar(d.toISOString().slice(0, 10));
+  });
+  $("#cal-today")?.addEventListener("click", () => loadCalendar(null));
+
+  /* ------------------------------ контакты и слоты ------------------------------ */
+  const contactFields = ["c_phone", "c_phone_raw", "c_address", "c_hours", "c_telegram",
+                         "c_viber", "c_whatsapp", "c_reviews_url", "c_reviews_note"];
+
+  async function loadContacts() {
+    let data;
+    try { data = await api("/api/admin/settings"); } catch (e) { return; }
+    const form = $("#contacts-form");
+    if (!form || !data.contacts) return;
+    contactFields.forEach(f => {
+      const input = form.querySelector(`[name="${f}"]`);
+      if (input) input.value = data.contacts[f.slice(2)] ?? "";
+    });
+    const cap = form.querySelector('[name="slot_capacity"]');
+    if (cap) cap.value = data.slot_capacity || "2";
+    const times = form.querySelector('[name="slot_times"]');
+    if (times) times.value = data.slot_times || "";
+  }
+
+  $("#contacts-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const body = { slot_capacity: form.querySelector('[name="slot_capacity"]').value,
+                   slot_times: form.querySelector('[name="slot_times"]').value };
+    contactFields.forEach(f => { body[f] = form.querySelector(`[name="${f}"]`).value; });
+    try {
+      const r = await fetch("/admin/settings", { method: "POST", body: new URLSearchParams(body) });
+      const j = await r.json();
+      if (j.ok) { toast("Контакти збережено — оновіть сайт"); loadContacts(); }
+      else toast(j.error || "Не збережено");
+    } catch (err) { toast("Помилка збереження"); }
+  });
 
   /* ------------------------------ события ------------------------------ */
   document.addEventListener("click", async (e) => {
@@ -215,6 +307,8 @@
 
   loadLeads();
   loadServices();
+  loadCalendar();
+  loadContacts();
 
   /* ------------------------------ аналитика ------------------------------ */
   async function loadAnalytics() {

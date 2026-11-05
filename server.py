@@ -40,6 +40,10 @@ SITE_URL = (os.environ.get("SITE_URL")
             or os.environ.get("RENDER_EXTERNAL_URL")
             or f"http://127.0.0.1:{PORT}")
 
+# сколько заявок с одного IP принимаем за окно (защита от спама); на демо-стенде можно поднять
+LEAD_LIMIT = int(os.environ.get("LEAD_LIMIT", "30"))
+LEAD_WINDOW_S = int(os.environ.get("LEAD_WINDOW_S", "600"))
+
 SESSIONS = {}          # token -> datetime истечения
 LOGIN_TRIES = {}       # ip -> [время неудачных попыток]
 LEAD_HITS = {}         # ip -> [время отправки заявок]
@@ -91,6 +95,27 @@ REVIEWS = [
      "Приїхав зі стуком у підвісці. Знайшли за 20 хвилин, показали на підйомнику. "
      "Замінили тільки те, що треба — не нав'язували комплекс."),
 ]
+
+# ----------------------------------------------------------------- слоты запису
+
+SLOT_TIMES = ["09:00", "10:00", "11:00", "12:00", "13:00",
+              "14:00", "15:00", "16:00", "17:00", "18:00"]
+DEFAULT_CAPACITY = 2          # скільки авто бере одна година
+SLOT_DAYS_AHEAD = 14          # на скільки днів вперед показуємо вільні слоти
+
+CONTACT_DEFAULTS = {
+    "phone": "+380 44 000-00-00",
+    "phone_raw": "+380440000000",
+    "address": "Київ, вул. Автосервісна, 12",
+    "hours": "Пн–Сб, 9:00–19:00",
+    "telegram": "https://t.me/autotochka_demo",
+    "viber": "viber://chat?number=%2B380440000000",
+    "whatsapp": "https://wa.me/380440000000",
+    "reviews_url": "https://maps.google.com/?q=Kyiv,+%D0%B2%D1%83%D0%BB.+%D0%90%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D1%96%D1%81%D0%BD%D0%B0,+12",
+    "reviews_note": "4.9 з 5 · 213 відгуків у Google",
+}
+
+WEEKDAYS_UK = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
 
 # ----------------------------------------------------------------- авторизация
 
@@ -171,7 +196,13 @@ def get_db():
     lead_cols = {r["name"] for r in conn.execute("PRAGMA table_info(leads)")}
     for col, ddl in (("note", "ALTER TABLE leads ADD COLUMN note TEXT DEFAULT ''"),
                      ("estimate", "ALTER TABLE leads ADD COLUMN estimate TEXT DEFAULT ''"),
-                     ("source", "ALTER TABLE leads ADD COLUMN source TEXT DEFAULT 'Сайт'")):
+                     ("source", "ALTER TABLE leads ADD COLUMN source TEXT DEFAULT 'Сайт'"),
+                     ("slot_date", "ALTER TABLE leads ADD COLUMN slot_date TEXT DEFAULT ''"),
+                     ("slot_time", "ALTER TABLE leads ADD COLUMN slot_time TEXT DEFAULT ''"),
+                     ("utm_source", "ALTER TABLE leads ADD COLUMN utm_source TEXT DEFAULT ''"),
+                     ("utm_medium", "ALTER TABLE leads ADD COLUMN utm_medium TEXT DEFAULT ''"),
+                     ("utm_campaign", "ALTER TABLE leads ADD COLUMN utm_campaign TEXT DEFAULT ''"),
+                     ("kind", "ALTER TABLE leads ADD COLUMN kind TEXT DEFAULT 'book'")):
         if col not in lead_cols:
             conn.execute(ddl)
     svc_cols = {r["name"] for r in conn.execute("PRAGMA table_info(services)")}
@@ -208,6 +239,88 @@ def get_setting(conn, key, default=""):
 def put_setting(conn, key, value):
     conn.execute("INSERT INTO settings(key, value) VALUES(?,?) "
                  "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+
+def contact_settings(conn):
+    """Контакти, які власник СТО редагує в адмінці."""
+    return {k: get_setting(conn, "c_" + k, v) for k, v in CONTACT_DEFAULTS.items()}
+
+
+def slot_capacity(conn):
+    try:
+        return max(1, min(20, int(get_setting(conn, "slot_capacity", str(DEFAULT_CAPACITY)))))
+    except ValueError:
+        return DEFAULT_CAPACITY
+
+
+def slot_times(conn):
+    raw = get_setting(conn, "slot_times", ",".join(SLOT_TIMES))
+    times = [t.strip() for t in raw.split(",") if re.fullmatch(r"\d{1,2}:\d{2}", t.strip())]
+    return times or SLOT_TIMES
+
+
+def parse_day(value):
+    try:
+        return datetime.date.fromisoformat((value or "").strip())
+    except ValueError:
+        return None
+
+
+def booked_map(conn, date_from, date_to):
+    """Скільки зайнято по кожному дню та годині."""
+    rows = conn.execute(
+        "SELECT slot_date, slot_time, COUNT(*) c FROM leads "
+        "WHERE slot_date != '' AND slot_date BETWEEN ? AND ? AND status != 'cancelled' "
+        "GROUP BY slot_date, slot_time", (date_from.isoformat(), date_to.isoformat())).fetchall()
+    out = {}
+    for r in rows:
+        out[(r["slot_date"], r["slot_time"])] = r["c"]
+    return out
+
+
+def day_slots(conn, day, booked=None, capacity=None):
+    """Вільні години на конкретний день з урахуванням графіка та вже зайнятих."""
+    capacity = capacity or slot_capacity(conn)
+    booked = booked if booked is not None else booked_map(conn, day, day)
+    now = datetime.datetime.now()
+    sunday = day.weekday() == 6
+    out = []
+    for t in slot_times(conn):
+        taken = booked.get((day.isoformat(), t), 0)
+        state = "free"
+        if sunday:
+            state = "closed"
+        elif day == now.date():
+            hh, mm = (int(x) for x in t.split(":"))
+            if (hh, mm) <= (now.hour, now.minute):
+                state = "past"
+        elif day < now.date():
+            state = "past"
+        if state == "free" and taken >= capacity:
+            state = "full"
+        out.append({"time": t, "booked": taken, "capacity": capacity,
+                    "free": max(0, capacity - taken), "state": state})
+    return out
+
+
+def slots_overview(conn, days=SLOT_DAYS_AHEAD):
+    """Дні з кількістю вільних місць — для вибору дати на сайті."""
+    today = datetime.date.today()
+    end = today + datetime.timedelta(days=days - 1)
+    booked = booked_map(conn, today, end)
+    capacity = slot_capacity(conn)
+    result = []
+    for i in range(days):
+        day = today + datetime.timedelta(days=i)
+        slots = day_slots(conn, day, booked, capacity)
+        free = sum(s["free"] for s in slots if s["state"] == "free")
+        label = "Сьогодні" if i == 0 else ("Завтра" if i == 1 else WEEKDAYS_UK[day.weekday()])
+        result.append({"date": day.isoformat(), "label": label,
+                       "day": day.day, "month": day.strftime("%m"),
+                       "weekday": WEEKDAYS_UK[day.weekday()],
+                       "free": free, "capacity": capacity * len(slots),
+                       "closed": day.weekday() == 6})
+    return result
 
 
 def esc(v):
@@ -371,6 +484,25 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/":
             return self.render_index()
+        if path == "/cases":
+            page = (tpl("cases.html")
+                    .replace("{{YEAR}}", str(datetime.date.today().year))
+                    .replace("{{SITE_URL}}", SITE_URL))
+            return self.send(200, page, cache="public, max-age=600")
+        if path == "/api/slots/days":
+            conn = get_db()
+            data = {"days": slots_overview(conn), "capacity": slot_capacity(conn)}
+            conn.close()
+            return self.json_out(data)
+        if path == "/api/slots":
+            day = parse_day((qs.get("date") or [""])[0])
+            if not day:
+                return self.json_out({"error": "Вкажіть дату"}, 400)
+            conn = get_db()
+            data = {"date": day.isoformat(), "slots": day_slots(conn, day),
+                    "capacity": slot_capacity(conn)}
+            conn.close()
+            return self.json_out(data)
         if path == "/privacy":
             page = (tpl("privacy.html")
                     .replace("{{SITE_URL}}", SITE_URL)
@@ -388,6 +520,8 @@ class Handler(BaseHTTPRequestHandler):
                     "<changefreq>weekly</changefreq><priority>1.0</priority></url>\n"
                     f"  <url><loc>{SITE_URL}/privacy</loc><lastmod>{today}</lastmod>"
                     "<changefreq>yearly</changefreq><priority>0.3</priority></url>\n"
+                    f"  <url><loc>{SITE_URL}/cases</loc><lastmod>{today}</lastmod>"
+                    "<changefreq>monthly</changefreq><priority>0.6</priority></url>\n"
                     "</urlset>\n")
             return self.send(200, body, "application/xml; charset=utf-8", cache="public, max-age=3600")
         if path in ("/favicon.ico", "/favicon.svg"):
@@ -445,6 +579,32 @@ class Handler(BaseHTTPRequestHandler):
             rows = [dict(r) for r in conn.execute("SELECT * FROM services ORDER BY sort, id")]
             conn.close()
             return self.json_out(rows)
+        if path == "/api/admin/calendar":
+            if not self.session_ok():
+                return self.json_out({"error": "auth"}, 401)
+            start = parse_day((qs.get("start") or [""])[0]) or datetime.date.today()
+            days = max(1, min(31, int((qs.get("days") or ["7"])[0] or 7)))
+            conn = get_db()
+            capacity = slot_capacity(conn)
+            times = slot_times(conn)
+            booked = booked_map(conn, start, start + datetime.timedelta(days=days - 1))
+            leads = [dict(r) for r in conn.execute(
+                "SELECT id, name, phone, service, car, slot_date, slot_time, status FROM leads "
+                "WHERE slot_date BETWEEN ? AND ? ORDER BY slot_date, slot_time",
+                (start.isoformat(), (start + datetime.timedelta(days=days - 1)).isoformat()))]
+            conn.close()
+            grid = []
+            for i in range(days):
+                d = start + datetime.timedelta(days=i)
+                grid.append({
+                    "date": d.isoformat(), "weekday": WEEKDAYS_UK[d.weekday()], "day": d.day,
+                    "closed": d.weekday() == 6,
+                    "slots": [{"time": t, "booked": booked.get((d.isoformat(), t), 0)}
+                              for t in times if d.weekday() != 6],
+                })
+            return self.json_out({"start": start.isoformat(), "days": days,
+                                  "capacity": capacity, "times": times, "grid": grid,
+                                  "leads": leads})
         if path == "/api/admin/analytics":
             if not self.session_ok():
                 return self.json_out({"error": "auth"}, 401)
@@ -457,7 +617,10 @@ class Handler(BaseHTTPRequestHandler):
             data = {"tg_enabled": get_setting(conn, "tg_enabled", "0"),
                     "tg_chat": get_setting(conn, "tg_chat"),
                     "tg_token_set": "1" if token else "0",
-                    "tg_token_tail": token[-6:] if token else ""}
+                    "tg_token_tail": token[-6:] if token else "",
+                    "slot_capacity": str(slot_capacity(conn)),
+                    "slot_times": ",".join(slot_times(conn)),
+                    "contacts": contact_settings(conn)}
             conn.close()
             return self.json_out(data)
         if path == "/admin/export.csv":
@@ -480,7 +643,9 @@ class Handler(BaseHTTPRequestHandler):
                              {"Content-Disposition": f'attachment; filename="{name}"'}, cache="no-store")
         if path.startswith("/static/"):
             return self.static_file(path.lstrip("/"))
-        return self.send(404, "Не знайдено")
+        page = (tpl("404.html")
+                .replace("{{YEAR}}", str(datetime.date.today().year)))
+        return self.send(404, page)
 
     # ------------------------------------------------------------ POST
     def do_POST(self):
@@ -500,13 +665,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_out({"ok": True})
 
         if path == "/api/leads":
-            if not rate_ok(LEAD_HITS, self.ip(), 20, 600):
+            if not rate_ok(LEAD_HITS, self.ip(), LEAD_LIMIT, LEAD_WINDOW_S):
                 return self.json_out({"ok": False, "error": "Забагато заявок"}, 429)
             if (data.get("company") or "").strip():              # honeypot против ботов
                 return self.json_out({"ok": True})
+            kind = "callback" if str(data.get("kind")) == "callback" else "book"
             name = (data.get("name") or "").strip()
             phone = (data.get("phone") or "").strip()
             consent = str(data.get("consent") or "")
+            if kind == "callback":
+                name = name or "Зворотний дзвінок"
             if len(name) < 2:
                 return self.json_out({"ok": False, "error": "Вкажіть ім'я"}, 400)
             if sum(ch.isdigit() for ch in phone) < 9:
@@ -514,27 +682,69 @@ class Handler(BaseHTTPRequestHandler):
             if consent not in ("1", "on", "true"):
                 return self.json_out({"ok": False,
                                       "error": "Потрібна згода на обробку даних"}, 400)
+
+            slot_date = (data.get("slot_date") or "").strip()
+            slot_time = (data.get("slot_time") or "").strip()
             conn = get_db()
-            conn.execute("""INSERT INTO leads (name, phone, service, car, when_at, comment, estimate, source)
-                            VALUES (?,?,?,?,?,?,?,?)""",
-                         (name[:80], phone[:30], (data.get("service") or "")[:80],
-                          (data.get("car") or "")[:80], (data.get("when_at") or "")[:40],
+            if slot_date or slot_time:
+                day = parse_day(slot_date)
+                if not day or slot_time not in slot_times(conn):
+                    conn.close()
+                    return self.json_out({"ok": False, "error": "Оберіть вільний час"}, 400)
+                today = datetime.date.today()
+                if day < today or day > today + datetime.timedelta(days=SLOT_DAYS_AHEAD):
+                    conn.close()
+                    return self.json_out({"ok": False, "error": "Дата поза доступним періодом"}, 400)
+                if day.weekday() == 6:
+                    conn.close()
+                    return self.json_out({"ok": False, "error": "Неділя — за домовленістю, оберіть інший день"}, 400)
+                taken = booked_map(conn, day, day).get((day.isoformat(), slot_time), 0)
+                if taken >= slot_capacity(conn):
+                    conn.close()
+                    return self.json_out({"ok": False, "error": "Цей час щойно зайняли — оберіть інший"}, 409)
+                when_at = f"{day.strftime('%d.%m.%Y')} {slot_time}"
+            else:
+                when_at = (data.get("when_at") or "").strip()[:40]
+
+            utm_source = (data.get("utm_source") or "").strip()[:60]
+            utm_medium = (data.get("utm_medium") or "").strip()[:60]
+            utm_campaign = (data.get("utm_campaign") or "").strip()[:60]
+            referrer = (data.get("referrer") or "").strip()[:80]
+            source = utm_source or referrer or "Прямий захід"
+
+            conn.execute("""INSERT INTO leads (name, phone, service, car, when_at, comment, estimate,
+                                              source, slot_date, slot_time,
+                                              utm_source, utm_medium, utm_campaign, kind)
+                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                         (name[:80], phone[:30], (data.get("service") or "Зворотний дзвінок" if kind == "callback" else data.get("service") or "")[:80],
+                          (data.get("car") or "")[:80], when_at,
                           (data.get("comment") or "")[:800],
-                          (data.get("estimate") or "")[:40], "Сайт"))
+                          (data.get("estimate") or "")[:40], source[:80],
+                          slot_date if slot_date else "", slot_time if slot_time else "",
+                          utm_source, utm_medium, utm_campaign, kind))
             lead_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             conn.execute("INSERT INTO events (name, path, session) VALUES ('lead', '/', ?)",
                          ((data.get("sid") or "")[:32],))
             conn.commit()
             conn.close()
-            notify_async(
-                "🚗 <b>Нова заявка з сайту</b>\n\n"
-                f"👤 {esc(name)}\n📞 {esc(phone)}\n"
-                f"🔧 {esc(data.get('service') or '—')}\n"
-                f"🚙 {esc(data.get('car') or '—')}\n"
-                f"📅 {esc(data.get('when_at') or '—')}\n"
-                f"💰 {esc(data.get('estimate') or '—')}\n"
-                f"💬 {esc((data.get('comment') or '—')[:300])}\n\n"
-                f"Заявка №{lead_id} у адмінці: {SITE_URL}/admin")
+
+            if kind == "callback":
+                notify_async(
+                    "📞 <b>Прохання передзвонити</b>\n\n"
+                    f"👤 {esc(name)}\n📞 {esc(phone)}\n"
+                    f"🔗 Джерело: {esc(source)}\n\n"
+                    f"Заявка №{lead_id} у адмінці: {SITE_URL}/admin")
+            else:
+                notify_async(
+                    "🚗 <b>Нова заявка з сайту</b>\n\n"
+                    f"👤 {esc(name)}\n📞 {esc(phone)}\n"
+                    f"🔧 {esc(data.get('service') or '—')}\n"
+                    f"🚙 {esc(data.get('car') or '—')}\n"
+                    f"📅 {esc(when_at or '—')}\n"
+                    f"💰 {esc(data.get('estimate') or '—')}\n"
+                    f"💬 {esc((data.get('comment') or '—')[:300])}\n"
+                    f"🔗 {esc(source)}\n\n"
+                    f"Заявка №{lead_id} у адмінці: {SITE_URL}/admin")
             return self.json_out({"ok": True, "id": lead_id})
 
         if path == "/admin/login":
@@ -618,6 +828,25 @@ class Handler(BaseHTTPRequestHandler):
                 put_setting(conn, "tg_token", token)
             put_setting(conn, "tg_chat", (data.get("tg_chat") or "").strip()[:40])
             put_setting(conn, "tg_enabled", "1" if str(data.get("tg_enabled")) in ("1", "on", "true") else "0")
+            if "slot_capacity" in data:
+                try:
+                    cap = int(data.get("slot_capacity") or DEFAULT_CAPACITY)
+                except ValueError:
+                    cap = DEFAULT_CAPACITY
+                put_setting(conn, "slot_capacity", str(max(1, min(20, cap))))
+            if "slot_times" in data:
+                times = [t.strip() for t in str(data.get("slot_times") or "").split(",")
+                         if re.fullmatch(r"\d{1,2}:\d{2}", t.strip())]
+                if times:
+                    put_setting(conn, "slot_times", ",".join(times))
+            contacts = data.get("contacts") or {}
+            if isinstance(contacts, dict):
+                for key in CONTACT_DEFAULTS:
+                    if key in contacts:
+                        put_setting(conn, "c_" + key, str(contacts[key]).strip()[:200])
+            for key in CONTACT_DEFAULTS:                     # плоские ключи из формы админки
+                if "c_" + key in data:
+                    put_setting(conn, "c_" + key, str(data["c_" + key]).strip()[:200])
             conn.commit()
             conn.close()
             return self.json_out({"ok": True})
@@ -764,6 +993,12 @@ class Handler(BaseHTTPRequestHandler):
                             "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in FAQ],
         }
 
+        conn2 = get_db()
+        contacts = contact_settings(conn2)
+        cal = slots_overview(conn2)
+        capacity = slot_capacity(conn2)
+        conn2.close()
+
         html = (tpl("index.html")
                 .replace("{{SERVICE_CARDS}}", cards)
                 .replace("{{PRICE_ROWS}}", rows)
@@ -776,6 +1011,17 @@ class Handler(BaseHTTPRequestHandler):
                 .replace("{{JSONLD}}", json.dumps(jsonld, ensure_ascii=False))
                 .replace("{{JSONLD_FAQ}}", json.dumps(faqld, ensure_ascii=False))
                 .replace("{{SITE_URL}}", SITE_URL)
+                .replace("{{SLOT_DAYS}}", json.dumps(cal, ensure_ascii=False))
+                .replace("{{SLOT_CAPACITY}}", str(capacity))
+                .replace("{{C_PHONE}}", esc(contacts["phone"]))
+                .replace("{{C_PHONE_RAW}}", esc(contacts["phone_raw"]))
+                .replace("{{C_ADDRESS}}", esc(contacts["address"]))
+                .replace("{{C_HOURS}}", esc(contacts["hours"]))
+                .replace("{{C_TELEGRAM}}", esc(contacts["telegram"]))
+                .replace("{{C_VIBER}}", esc(contacts["viber"]))
+                .replace("{{C_WHATSAPP}}", esc(contacts["whatsapp"]))
+                .replace("{{C_REVIEWS_URL}}", esc(contacts["reviews_url"]))
+                .replace("{{C_REVIEWS_NOTE}}", esc(contacts["reviews_note"]))
                 .replace("{{YEAR}}", str(datetime.date.today().year)))
         self.send(200, html, cache="no-store")
 
