@@ -17,3 +17,6 @@ tools/axe_report.json
 tools/vnu_report.json
 tools/w3c_report.json
 tools/report.json
+# рабочие списки клиентов (телефоны) — не в публичный репозиторий
+data/prospects_*.csv
+data/prospects_*.json
