@@ -522,6 +522,18 @@ check("адмінка: кнопка реагує на прокрутку й пі
       'getElementById("to-top")' in _ajs and "scrollTo(0, 0)" in _ajs and "SHOW_AFTER" in _ajs)
 check("адмінка: невидима кнопка прибрана з Tab", "tabIndex = visible ? 0 : -1" in _ajs)
 
+
+# ---------- вход: прощаем пробелы, объясняем причину отказа ----------
+_st, _body, _hdrs = post("/admin/login", {"password": "  admin123  "}, follow=False)
+check("вхід не ламається через пробіли навколо пароля", _st == 302, _st)
+_st, _body, _ = post("/admin/login", {"password": "admin123"}, follow=False)
+check("вхід звичайним паролем", _st == 302, _st)
+_st, _body, _ = post("/admin/login", {"password": "admin124"})
+check("невірний пароль: пояснення про розкладку",
+      _st == 200 and "розкладка клавіатури" in _body, _st)
+_st, _body, _ = post("/admin/password", {"old": "admin123", "new": "  korot  "}, cookie)
+check("пароль із пробілами теж перевіряється на довжину", _st == 400, _body[:60])
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)

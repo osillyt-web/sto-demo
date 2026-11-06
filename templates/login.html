@@ -16,8 +16,9 @@
   .card-login h1{font-size:24px;margin-bottom:6px}
   .card-login .sub{margin-bottom:22px;font-size:14px}
   .card-login .form{max-width:none}
-  .err{color:var(--err);font-size:14px;margin:0 0 14px;background:rgba(255,92,92,.08);
+  .err{color:var(--err);font-size:14px;margin:0 0 10px;background:rgba(255,92,92,.08);
        border:1px solid rgba(255,92,92,.25);border-radius:9px;padding:10px 12px}
+  .err-tip{color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.5}
   .hint{margin:18px 0 0;font-size:12.5px;color:var(--muted);text-align:center}
   .back{margin-top:16px;text-align:center;font-size:13px}
   .back a{color:var(--muted)}
@@ -35,6 +36,8 @@
   {{ERROR}}
   <form class="form" method="post" action="/admin/login">
     <label>Пароль<input type="password" name="password" data-eye autofocus required autocomplete="current-password"></label>
+    <p class="err-tip" style="margin:10px 0 14px">Пароль англійськими літерами. Якщо браузер підставляє
+      старий пароль — видаліть його і введіть вручну; око в полі покаже, що саме введено.</p>
     <button class="btn btn-accent btn-wide" type="submit">Увійти</button>
   </form>
   {{DEMO_HINT}}

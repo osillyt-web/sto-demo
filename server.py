@@ -1176,7 +1176,8 @@ class Handler(BaseHTTPRequestHandler):
             if len(recent_fails) >= 10:
                 return self.send(429, login_page(
                     '<p class="err">Забагато спроб. Зачекайте 5 хвилин.</p>'))
-            if verify_password(data.get("password")):
+            # срезаем пробелы: на телефоне клавиатура часто добавляет пробел, и «верный» пароль не проходит
+            if verify_password((data.get("password") or "").strip()):
                 LOGIN_TRIES.pop(ip, None)
                 token = secrets.token_urlsafe(24)
                 SESSIONS[token] = datetime.datetime.now() + datetime.timedelta(hours=8)
@@ -1194,7 +1195,10 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 conn.close()
             time.sleep(0.4)                                    # замедляем перебор
-            return self.send(200, login_page('<p class="err">Невірний пароль</p>'))
+            return self.send(200, login_page(
+                '<p class="err">Невірний пароль.</p>'
+                '<p class="err-tip">Найчастіше причина — розкладка клавіатури (потрібна англійська) '
+                'або зайвий пробіл. Натисніть око в полі — побачите, що саме введено.</p>'))
 
         if path == "/admin/logout":
             for part in (self.headers.get("Cookie") or "").split(";"):
@@ -1298,8 +1302,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/admin/password":
             old = data.get("old") or ""
             new = data.get("new") or ""
-            if not verify_password(old):
+            if not verify_password(old.strip()):
                 return self.json_out({"ok": False, "error": "Поточний пароль невірний"}, 400)
+            new = new.strip()
             problem = password_problem(new)
             if problem:
                 return self.json_out({"ok": False, "error": problem}, 400)
