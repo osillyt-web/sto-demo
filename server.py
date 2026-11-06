@@ -73,6 +73,7 @@ ATTEMPT_LIMIT = int(os.environ.get("ATTEMPT_LIMIT", "200"))  # любых обр
 
 BACKUPS_DIR = os.path.join(BASE, "backups")
 ERRORS_LOG = os.path.join(DATA_DIR, "errors.log")
+SECURITY_LOG = os.path.join(DATA_DIR, "security.log")
 VERSION = "3.2"
 STARTED_AT = datetime.datetime.now()
 
@@ -594,6 +595,8 @@ def login_page(error=""):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "AutoTochka/3.2"
+    # не сообщаем окружающим версию Python: точная версия облегчает подбор известных дыр
+    sys_version = ""
 
     def log_error(self, fmt, *args):
         """Ошибки пишем в data/errors.log — иначе на хостинге они теряются."""
@@ -673,6 +676,50 @@ class Handler(BaseHTTPRequestHandler):
                 SESSIONS.pop(v, None)
         return False
 
+    # ---------------------------------------------------------- защита служебных путей
+    # Любой запрос к исходникам, базе, настройкам, .git и т.п. получает тот же 404,
+    # что и несуществующая страница, но записывается в data/security.log.
+    # Смысл: перебор не даёт подсказок (нет 403 «есть, но нельзя»), а владелец видит попытки.
+    SENSITIVE_FIRST = {"data", "backups", "templates", "tools", "scripts", ".git", ".env",
+                       ".venv", "venv", "pwenv", "node_modules", "cache", "__pycache__"}
+    BLOCKED_TOTAL = 0
+    BLOCKED_LAST = []
+
+    def looks_sensitive(self, path):
+        p = unquote(path or "").replace("\\", "/").strip("/").lower()
+        if not p:
+            return False
+        parts = [x for x in p.split("/") if x not in ("", ".", "..")]
+        first = parts[0] if parts else ""
+        if first in self.SENSITIVE_FIRST or first.startswith("."):
+            return True
+        if ":" in p:                        # ::$DATA и подобные потоки NTFS
+            return True
+        if ".git" in parts or "/.git" in p:
+            return True
+        for tail in (".py", ".db", ".sqlite", ".log", ".bak", ".env", ".json", ".ini", ".pem", ".key",
+                     ".jks", ".keystore", ".p12"):
+            if p.endswith(tail):
+                return True
+        # только точные имена: иначе под запрет попадёт, например, /static/password-eye.js
+        name = parts[-1] if parts else ""
+        return name in {"auth.json", "secrets.json", "credentials.json", "id_rsa", "id_ed25519",
+                        ".htpasswd", "keystore.jks", "secrets.properties"}
+
+    def blocked(self, path, why="служебный путь"):
+        server_blocked = type(self)
+        server_blocked.BLOCKED_TOTAL += 1
+        now = datetime.datetime.now()
+        server_blocked.BLOCKED_LAST = (server_blocked.BLOCKED_LAST + [
+            (now.isoformat(timespec="seconds"), self.ip(), self.command, path[:120], why)])[-50:]
+        try:
+            with open(SECURITY_LOG, "a", encoding="utf-8") as fh:
+                fh.write(f"{now.isoformat(timespec='seconds')}\t{self.ip()}\t{self.command}\t"
+                         f"{path[:120]}\t{why}\n")
+        except OSError:
+            pass
+        return self.send(404, "not found", "text/plain; charset=utf-8")
+
     def same_origin(self):
         """CSRF-барьер: изменяющие запросы с чужого Origin не проходят."""
         origin = self.headers.get("Origin")
@@ -680,9 +727,30 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return origin.endswith(self.headers.get("Host") or "\0")
 
+    STATIC_EXT = {".css", ".js", ".webp", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
+                  ".woff", ".woff2", ".ttf", ".map"}
+
     def static_file(self, rel):
-        path = os.path.normpath(os.path.join(BASE, rel.replace("/", os.sep)))
-        if not path.startswith(os.path.join(BASE, "static")) or not os.path.isfile(path):
+        """Отдаём только файлы из static/ с разрешёнными расширениями.
+
+        Проверки не косметические: на Windows путь можно обойти хвостом `::$DATA`,
+        обратными слэшами, точками и junction-ссылкой. Поэтому сначала канонизируем
+        путь, затем убеждаемся, что он физически лежит внутри static/.
+        """
+        rel = (rel or "").replace("\\", "/").lstrip("/")
+        if rel.startswith("static/"):       # вызывающий передаёт путь вместе с префиксом
+            rel = rel[len("static/"):]
+        if (not rel or ".." in rel or ":" in rel or rel.startswith("/")
+                or "/." in rel or rel.startswith(".") or rel.endswith("/")):
+            return self.blocked(rel, "подозрительный путь к статике")
+        root = os.path.realpath(os.path.join(BASE, "static"))
+        path = os.path.realpath(os.path.join(root, rel.lstrip("/")))
+        if os.path.commonpath([root, path]) != root:
+            return self.blocked(rel, "выход за пределы static")
+        ext = os.path.splitext(path)[1].lower()
+        if ext not in self.STATIC_EXT:
+            return self.blocked(rel, f"запрещённое расширение {ext or 'без расширения'}")
+        if not os.path.isfile(path):
             return self.send(404, "not found", "text/plain; charset=utf-8")
         ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
         if ctype in ("font/woff2", "image/webp", "image/svg+xml"):
@@ -710,6 +778,10 @@ class Handler(BaseHTTPRequestHandler):
             query = ("?" + u.query) if u.query else ""
             return self.send(301, "", extra={"Location": quote(clean, safe="/") + query})
         path = clean or "/"
+
+        # перебор служебных файлов: ответ тот же, что и на несуществующую страницу
+        if self.looks_sensitive(path):
+            return self.blocked(path)
 
         if path == "/":
             return self.render_index()
@@ -886,9 +958,12 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     conn.execute("SELECT 1").fetchone()
                     health["db"] = "ok"
-                    health["leads"] = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
-                    health["settings"] = conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
-                    health["slot_capacity"] = slot_capacity(conn)
+                    # сколько заявок и настроек — не публичная информация: показываем только владельцу
+                    if self.session_ok():
+                        health["leads"] = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+                        health["settings"] = conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
+                        health["slot_capacity"] = slot_capacity(conn)
+                        health["blocked_total"] = type(self).BLOCKED_TOTAL
                 finally:
                     conn.close()
                 health["ok"] = True
@@ -900,7 +975,15 @@ class Handler(BaseHTTPRequestHandler):
                     health["default_password"] = is_default_password()
                 return self.json_out(health)
             except Exception as exc:
-                health["db"] = f"error: {str(exc)[:120]}"
+                # наружу — короткий статус: текст ошибки базы может содержать пути к файлам
+                health["db"] = "error"
+                if self.session_ok():
+                    health["db_detail"] = str(exc)[:200]
+                try:
+                    with open(ERRORS_LOG, "a", encoding="utf-8") as fh:
+                        fh.write(f"{datetime.datetime.now().isoformat(timespec='seconds')}\thealth: {str(exc)[:200]}\n")
+                except OSError:
+                    pass
                 return self.json_out(health, 503)
 
         if path == "/api/admin/state":
@@ -1040,6 +1123,8 @@ class Handler(BaseHTTPRequestHandler):
     # ------------------------------------------------------------ POST
     def do_POST(self):
         path = urlparse(self.path).path
+        if self.looks_sensitive(path):
+            return self.blocked(path)
         data = self.body()
 
         if path == "/api/hit":                                   # аналитика (sendBeacon)

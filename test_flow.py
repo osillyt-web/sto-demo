@@ -407,15 +407,81 @@ status, _, _ = get_soft("/r/nesovsem-token")
 check("невідомий токен запису = 404", status == 404)
 
 
+
+# ---------- защита служебных файлов: перебор не должен ничего отдавать ----------
+import glob as _glob2
+_here2 = os.path.dirname(os.path.abspath(__file__))
+_sensitive = [
+    "/data/auth.json", "/data/sto.db", "/data/errors.log", "/data/security.log", "/backups/",
+    "/server.py", "/content.py", "/ops.py", "/templates/index.html", "/tools/axe_check.py",
+    "/.git/config", "/.env", "/requirements.txt", "/test_flow.py", "/server.log",
+    "/static/../data/auth.json", "/static/%2e%2e/data/auth.json", "/static\\..\\data\\auth.json",
+    "/static/style.css::$DATA", "/static/foo.json", "/static/x.py", "/static/.hidden",
+    "/admin/../data/auth.json", "/api/../data/auth.json", "/data/",
+]
+_opened = []
+for _p in _sensitive:
+    _st = get_soft(_p)[0]
+    if _st == 200:
+        _opened.append(_p)
+check("служебные файлы недоступны снаружи", not _opened, _opened)
+
+# обход через кодирование и «хвосты» тоже не должен открывать файлы
+_q = ["/data/auth.json?x=1", "/data/auth.json%20", "/DATA/AUTH.JSON", "/data//auth.json",
+      "/%64ata/auth.json", "/static/./../data/sto.db"]
+_opened2 = [p for p in _q if get_soft(p)[0] == 200]
+check("обход каталогов через кодирование не работает", not _opened2, _opened2)
+
+# ответ не должен отличаться от обычной отсутствующей страницы (никаких подсказок)
+_st_b, _body_b, _ = get_soft("/data/auth.json")
+check("на служебный путь ответ как на несуществующую страницу",
+      _st_b == 404 and _body_b.strip() == "not found", (get_soft("/data/auth.json")[0], _body_b[:40]))
+
+# все реальные файлы статики должны отдаваться (картинки — двоичные, поэтому только код ответа)
+def _status_only(path):
+    import http.client as _h
+    c = _h.HTTPConnection("127.0.0.1", 8000, timeout=10)
+    c.request("GET", path)
+    code = c.getresponse().status
+    c.close()
+    return code
+
+_missing_static = []
+for _f in _glob2.glob(os.path.join(_here2, "static", "**", "*"), recursive=True):
+    if os.path.isfile(_f):
+        _rel = "/static/" + os.path.relpath(_f, os.path.join(_here2, "static")).replace(os.sep, "/")
+        if _status_only(_rel) != 200:
+            _missing_static.append(_rel)
+check("вся статика отдаётся после введения ограничений", not _missing_static, _missing_static[:5])
+
+# попытки перебора попадают в журнал
+_log = os.path.join(_here2, "data", "security.log")
+_seen = os.path.exists(_log) and "data/auth.json" in open(_log, encoding="utf-8").read()
+check("попытки доступа к служебным файлам пишутся в журнал", _seen)
+
+# заголовок Server не выдаёт версию Python
+import http.client as _http
+_c = _http.HTTPConnection("127.0.0.1", 8000, timeout=10)
+_c.request("GET", "/")
+_srv = _c.getresponse().getheader("Server") or ""
+_c.close()
+check("заголовок Server не содержит версию Python", "Python" not in _srv and "AutoTochka" in _srv, _srv)
+
 # ---------- эксплуатация: health, бэкапы, журнал, пароль ----------
 import os as _os, glob as _glob, sqlite3 as _sqlite
 
 st, hbody, _ = get("/api/health")
 h = json.loads(hbody)
 check("GET /api/health = 200, база ок", st == 200 and h.get("ok") and h.get("db") == "ok", h.get("db"))
-check("health віддає версію, аптайм і кількість заявок",
-      bool(h.get("version")) and isinstance(h.get("uptime_s"), int) and h.get("leads", -1) >= 0)
+check("health віддає версію та аптайм",
+      bool(h.get("version")) and isinstance(h.get("uptime_s"), int))
+# кількість заявок — не публічна інформація: без входу її не видно
+check("health без входу не показує кількість заявок і налаштувань",
+      "leads" not in h and "settings" not in h)
 check("health не світить стан пароля без входу", "default_password" not in h)
+_, hbody2, _ = get("/api/health", cookie)
+h2 = json.loads(hbody2)
+check("health з входом показує кількість заявок", isinstance(h2.get("leads"), int))
 
 st, _, _ = get_soft("/api/admin/state")
 check("стан системи закритий без входу", st in (401, 403), st)
@@ -605,8 +671,13 @@ check("публічне API слотів: без no-store",
       "no-store" not in (_h2.get("Cache-Control") or ""))
 
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
+# удаляем все заявки тестового клиента: если прошлый прогон упал, за ним остались «хвосты»
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)
+_, _lb, _ = get("/api/admin/leads", cookie)
+for _l in json.loads(_lb)["leads"]:
+    if _l["name"] == "Олег Тестовий":
+        post("/admin/lead", {"action": "delete", "id": _l["id"]}, cookie)
 post("/admin/service", {"action": "update", "id": 1, "title": orig_svc["title"],
                         "price": orig_svc["price"], "note": orig_svc["note"],
                         "base": orig_svc["base"], "active": "1"}, cookie)
