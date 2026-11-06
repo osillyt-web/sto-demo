@@ -484,6 +484,14 @@ for p in ["/", "/admin", "/services", "/cases", "/privacy"]:
     st, _, _ = get_soft(p)
     check(f"нормальна адреса {p} не зламана", st in (200, 302), st)
 
+
+# ---------- стоимость хранения пароля ----------
+_auth_path = _os.path.join(_here, "data", "auth.json")
+_auth = json.load(open(_auth_path, encoding="utf-8"))
+check("пароль зберігається з 600 000 ітерацій PBKDF2", int(_auth.get("iter", 0)) >= 600_000,
+      _auth.get("iter"))
+check("у файлі пароля немає самого пароля", set(_auth) == {"salt", "hash", "iter"}, sorted(_auth))
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)

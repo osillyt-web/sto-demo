@@ -150,9 +150,14 @@ CONTACT_DEFAULTS = {
 
 WEEKDAYS_UK = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
 
+# Стоимость хеширования пароля (OWASP: для PBKDF2-SHA256 не меньше 600 000 итераций).
+# Хранится вместе с хешем, поэтому старые пароли продолжают работать.
+PBKDF2_ITERATIONS = int(os.environ.get("PBKDF2_ITERATIONS", "600000"))
+
 # ----------------------------------------------------------------- авторизация
 
-def _hash_password(password, salt=None, iterations=200_000):
+def _hash_password(password, salt=None, iterations=None):
+    iterations = iterations or PBKDF2_ITERATIONS
     salt = salt or secrets.token_bytes(16)
     digest = hashlib_pbkdf2(password, salt, iterations)
     return {"salt": salt.hex(), "hash": digest.hex(), "iter": iterations}
@@ -197,16 +202,30 @@ def is_default_password():
         return False
 
 
-def verify_password(password):
+def verify_password(password, upgrade=True):
+    """Проверка пароля. Если хеш старый (меньше итераций) — при верном пароле
+    пересчитываем его дороже и сохраняем: вход не требует ничьих действий."""
     auth = load_auth()
-    digest = hashlib_pbkdf2(password or "", bytes.fromhex(auth["salt"]), int(auth.get("iter", 200_000)))
-    return hmac.compare_digest(digest.hex(), auth["hash"])
+    iterations = int(auth.get("iter") or 200_000)
+    digest = hashlib_pbkdf2(password or "", bytes.fromhex(auth["salt"]), iterations)
+    if not hmac.compare_digest(digest.hex(), auth["hash"]):
+        return False
+    if upgrade and iterations < PBKDF2_ITERATIONS:
+        try:
+            _save_auth(_hash_password(password, iterations=PBKDF2_ITERATIONS))
+        except Exception:
+            pass                                   # не мешаем входу, если диск недоступен
+    return True
+
+
+def _save_auth(payload):
+    with open(AUTH_PATH, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh)
 
 
 def set_password(password):
     payload = _hash_password(password)
-    with open(AUTH_PATH, "w", encoding="utf-8") as fh:
-        json.dump(payload, fh)
+    _save_auth(payload)
     SESSIONS.clear()          # после смены пароля все сессии сбрасываются
     return payload
 
