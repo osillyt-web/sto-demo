@@ -34,11 +34,12 @@
   <p class="sub">Заявки, прайс і послуги вашого сайту.</p>
   {{ERROR}}
   <form class="form" method="post" action="/admin/login">
-    <label>Пароль<input type="password" name="password" autofocus required autocomplete="current-password"></label>
+    <label>Пароль<input type="password" name="password" data-eye autofocus required autocomplete="current-password"></label>
     <button class="btn btn-accent btn-wide" type="submit">Увійти</button>
   </form>
-  <p class="hint">Демо-пароль: <b>admin123</b> · змінюється змінною ADMIN_PASSWORD</p>
+  {{DEMO_HINT}}
   <p class="back"><a href="/">← Повернутись на сайт</a></p>
 </div>
+<script src="/static/password-eye.js?v={{ASSET_V}}"></script>
 </body>
 </html>

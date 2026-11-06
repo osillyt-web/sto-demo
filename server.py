@@ -573,6 +573,18 @@ def reminder_loop():
 # страницы услуг и марок: передаём зависимости, чтобы не было циклического импорта
 seo_pages.configure(esc, SITE_URL, tpl, contact_settings)
 
+def login_page(error=""):
+    """Страница входа. Подсказка про демо-пароль показывается только пока пароль демонстрационный."""
+    hint = ""
+    if is_default_password():
+        hint = ('<p class="hint">Демо-пароль: <b>' + esc(INITIAL_PASSWORD) + '</b> · '
+                'змінюється в панелі або змінною ADMIN_PASSWORD</p>')
+    return (tpl("login.html")
+            .replace("{{ERROR}}", error)
+            .replace("{{DEMO_HINT}}", hint))
+
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "AutoTochka/3.2"
 
@@ -838,10 +850,13 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, fh.read(), "image/svg+xml", cache="public, max-age=604800")
             return self.send(404, "")
         if path == "/admin":
-            return self.send(200, tpl("admin.html"), cache="no-store") if self.session_ok() \
-                else self.redirect("/admin/login")
+            if not self.session_ok():
+                return self.redirect("/admin/login")
+            page = (tpl("admin.html")
+                    .replace("{{PBKDF2_ITERS}}", f"{PBKDF2_ITERATIONS:,}".replace(",", " ")))
+            return self.send(200, page, cache="no-store")
         if path == "/admin/login":
-            return self.send(200, tpl("login.html").replace("{{ERROR}}", ""), cache="no-store")
+            return self.send(200, login_page(), cache="no-store")
         if path == "/api/services":
             conn = get_db()
             rows = [dict(r) for r in conn.execute(
@@ -1152,8 +1167,8 @@ class Handler(BaseHTTPRequestHandler):
             not_long_ago = datetime.datetime.now() - datetime.timedelta(minutes=5)
             recent_fails = [t for t in LOGIN_TRIES.get(ip, []) if t > not_long_ago]
             if len(recent_fails) >= 10:
-                return self.send(429, tpl("login.html").replace(
-                    "{{ERROR}}", '<p class="err">Забагато спроб. Зачекайте 5 хвилин.</p>'))
+                return self.send(429, login_page(
+                    '<p class="err">Забагато спроб. Зачекайте 5 хвилин.</p>'))
             if verify_password(data.get("password")):
                 LOGIN_TRIES.pop(ip, None)
                 token = secrets.token_urlsafe(24)
@@ -1172,8 +1187,7 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 conn.close()
             time.sleep(0.4)                                    # замедляем перебор
-            return self.send(200, tpl("login.html").replace(
-                "{{ERROR}}", '<p class="err">Невірний пароль</p>'))
+            return self.send(200, login_page('<p class="err">Невірний пароль</p>'))
 
         if path == "/admin/logout":
             for part in (self.headers.get("Cookie") or "").split(";"):

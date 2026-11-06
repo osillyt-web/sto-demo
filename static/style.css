@@ -771,3 +771,16 @@ textarea{resize:vertical}
   .ptable{min-width:0}
   .ptable th,.ptable td{padding:10px 11px;font-size:13.5px}
 }
+
+/* ---------- поле пароля с кнопкой «показать» ---------- */
+.pwd{position:relative;display:block}
+.pwd input{padding-right:48px;width:100%}
+.pwd-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  width:40px;height:40px;display:grid;place-items:center;padding:0;cursor:pointer;
+  border:0;border-radius:9px;background:transparent;color:var(--muted);
+  transition:color .15s,background .15s}
+.pwd-eye svg{width:19px;height:19px}
+.pwd-eye:hover,.pwd-eye:focus-visible{color:var(--text);background:rgba(255,255,255,.06)}
+.pwd-eye:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pwd-eye.is-on{color:var(--accent)}
+@media (max-width:640px){ .pwd-eye{width:44px;height:44px;right:3px} .pwd input{padding-right:52px} }

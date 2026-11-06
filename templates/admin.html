@@ -171,15 +171,15 @@
     <div class="panel-head"><h2>Пароль адміністратора</h2></div>
     <form class="settings-form" id="pw-form">
       <label>Поточний пароль
-        <input type="password" name="old" autocomplete="current-password" required>
+        <input type="password" name="old" data-eye autocomplete="current-password" required>
       </label>
-      <label>Новий пароль <span class="hint">мінімум 8 символів</span>
-        <input type="password" name="new" autocomplete="new-password" minlength="8" required>
+      <label>Новий пароль <span class="hint">мінімум 10 символів, літери й цифри</span>
+        <input type="password" name="new" data-eye autocomplete="new-password" minlength="10" required>
       </label>
       <div class="settings-actions">
         <button class="btn btn-accent btn-sm" type="submit">Змінити пароль</button>
       </div>
-      <p class="hint">Пароль зберігається хешем (PBKDF2-SHA256, 200 000 ітерацій). Після зміни всі сесії скидаються.</p>
+      <p class="hint">Пароль зберігається хешем (PBKDF2-SHA256, {{PBKDF2_ITERS}} ітерацій). Після зміни всі сесії скидаються.</p>
     </form>
   </section>
 
@@ -187,6 +187,7 @@
 </main>
 
 <div class="toast" id="toast" role="status"></div>
+<script src="/static/password-eye.js?v={{ASSET_V}}"></script>
 <script src="/static/admin.js?v={{ASSET_V}}"></script>
 </body>
 </html>

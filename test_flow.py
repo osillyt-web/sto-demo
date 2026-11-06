@@ -492,6 +492,22 @@ check("пароль зберігається з 600 000 ітерацій PBKDF2"
       _auth.get("iter"))
 check("у файлі пароля немає самого пароля", set(_auth) == {"salt", "hash", "iter"}, sorted(_auth))
 
+
+# ---------- кнопка «показать пароль» ----------
+_, lp, _ = get("/admin/login")
+check("вхід: поле пароля з кнопкою показу", 'data-eye' in lp and "password-eye.js" in lp)
+check("вхід: підказка про демо-пароль лише як демо-пароль", "Демо-пароль" in lp)
+check("вхід: без незамінених плейсхолдерів", "{{" not in lp)
+st, eye, _ = get("/static/password-eye.js")
+check("скрипт кнопки віддається (200) і вміє перемикати стан",
+      st == 200 and "aria-pressed" in eye and "password" in eye)
+_, adm, _ = get("/admin", cookie)
+check("адмінка: два поля з кнопкою показу", adm.count("data-eye") == 2, adm.count("data-eye"))
+check("адмінка: вимоги до пароля узгоджені з сервером (10 символів)",
+      "мінімум 10 символів" in adm and 'minlength="10"' in adm)
+check("адмінка: на сторінці актуальна вартість хешування",
+      "600 000 ітерацій" in adm, "600 000" in adm)
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)
