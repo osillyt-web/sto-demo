@@ -529,3 +529,93 @@
 
   sync();
 })();
+
+/* навигация по разделам: подсветка текущего раздела и аккуратный переход */
+(() => {
+  "use strict";
+  const nav = document.querySelector(".adm-nav-list");
+  if (!nav) return;
+  const links = [...nav.querySelectorAll("a[data-nav]")];
+  const sections = links.map(a => document.getElementById(a.dataset.nav)).filter(Boolean);
+  if (!sections.length) return;
+
+  const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const navBox = document.querySelector(".adm-nav");
+
+  function syncScrollable() {
+    if (!navBox) return;
+    navBox.classList.toggle("is-scrollable", navBox.scrollWidth > navBox.clientWidth + 4);
+  }
+
+  function mark(id) {
+    links.forEach(a => {
+      const on = a.dataset.nav === id;
+      // на телефоне лента прокручивается: активная вкладка должна быть видна
+      if (on && navBox && navBox.scrollWidth > navBox.clientWidth + 4) {
+        const r = a.getBoundingClientRect(), n = navBox.getBoundingClientRect();
+        const delta = (r.left - n.left) - (n.width - r.width) / 2;
+        const mode = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+        navBox.scrollBy({ left: delta, behavior: mode });
+      }
+      // aria-current="location" — раздел, в котором сейчас находится человек
+      if (on) a.setAttribute("aria-current", "location");
+      else a.removeAttribute("aria-current");
+    });
+  }
+
+  // самый верхний раздел, который сейчас виден под шапкой
+  let ticking = false;
+  function sync() {
+    ticking = false;
+    const line = 140;                       // линия «под шапкой»
+    // до последнего раздела нельзя доскроллить до самого верха — у низа страницы
+    // текущим считаем последний раздел, иначе подсветка «залипает» на предпоследнем
+    const atBottom = window.innerHeight + window.scrollY >=
+                     document.documentElement.scrollHeight - 4;
+    if (atBottom) { mark(sections[sections.length - 1].id); return; }
+    let current = sections[0].id;
+    for (const s of sections) {
+      if (s.getBoundingClientRect().top - line <= 0) current = s.id;
+    }
+    mark(current);
+  }
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(sync);
+  }, { passive: true });
+  window.addEventListener("resize", () => { syncScrollable(); sync(); }, { passive: true });
+  syncScrollable();
+  sync();
+
+  // переход: своя прокрутка (не конфликтует со scroll-behavior) + фокус в раздел
+  links.forEach(a => {
+    a.addEventListener("click", (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;   // не мешаем «открыть в новой вкладке»
+      const target = document.getElementById(a.dataset.nav);
+      if (!target) return;
+      e.preventDefault();
+      const head = target.querySelector("h2") || target;
+      const top = target.getBoundingClientRect().top + window.scrollY
+                - (window.innerWidth <= 1080 ? 116 : 88);
+      if (reduce()) window.scrollTo(0, top);
+      else {
+        const html = document.documentElement, prev = html.style.scrollBehavior;
+        html.style.scrollBehavior = "auto";
+        const start = window.scrollY, t0 = performance.now(), dur = 420;
+        const ease = t => 1 - Math.pow(1 - t, 3);
+        (function step(now) {
+          const p = Math.min(1, (now - t0) / dur);
+          window.scrollTo(0, start + (top - start) * ease(p));
+          if (p < 1) requestAnimationFrame(step); else html.style.scrollBehavior = prev;
+        })(performance.now());
+      }
+      mark(target.id);
+      // фокус — чтобы клавиатура продолжила с этого раздела, а не с начала страницы
+      head.setAttribute("tabindex", "-1");
+      head.focus({ preventScroll: true });
+      if (history.replaceState) history.replaceState(null, "", "#" + target.id);
+    });
+  });
+})();

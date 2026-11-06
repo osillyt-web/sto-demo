@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Функциональный прогон: сайт, калькулятор, форма, админка, экспорт. Печатает PASS/FAIL."""
-import json, sys, urllib.request, urllib.parse, urllib.error
+import json, os, sys, urllib.request, urllib.parse, urllib.error
+
+# Пароль админки: по умолчанию демонстрационный, но после смены пароля владельцем
+# тесты запускаются так:  ADMIN_PASSWORD='свій пароль' python test_flow.py
+PW = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 BASE = "http://127.0.0.1:8000"
 fails = []
@@ -83,7 +87,7 @@ check("honeypot пропускает бота молча", status == 200 and jso
 # ---------- вход ----------
 status, body, _ = post("/admin/login", {"password": "wrong"})
 check("неверный пароль не пускает", "Невірний пароль" in body)
-status, body, hdrs = post("/admin/login", {"password": "admin123"}, follow=False)
+status, body, hdrs = post("/admin/login", {"password": PW}, follow=False)
 cookie = (hdrs.get("Set-Cookie") or "").split(";")[0]
 check("вход выдаёт HttpOnly cookie",
       status == 302 and cookie.startswith("sid=") and "HttpOnly" in hdrs.get("Set-Cookie", ""))
@@ -441,9 +445,9 @@ if _backups:
           f"заявок {_leads_in_copy}, послуг {_svc_in_copy}")
 
 # слабкий пароль не приймається
-st, pbody, _ = post("/admin/password", {"old": "admin123", "new": "admin123"}, cookie)
+st, pbody, _ = post("/admin/password", {"old": PW, "new": "admin123"}, cookie)
 check("слабкий пароль відхилено (400)", st == 400, pbody[:60])
-st, pbody, _ = post("/admin/password", {"old": "admin123", "new": "korotkyi"}, cookie)
+st, pbody, _ = post("/admin/password", {"old": PW, "new": "korotkyi"}, cookie)
 check("короткий пароль відхилено (400)", st == 400, pbody[:60])
 
 # журнал фіксує зміну налаштувань
@@ -524,15 +528,36 @@ check("адмінка: невидима кнопка прибрана з Tab", "
 
 
 # ---------- вход: прощаем пробелы, объясняем причину отказа ----------
-_st, _body, _hdrs = post("/admin/login", {"password": "  admin123  "}, follow=False)
+_st, _body, _hdrs = post("/admin/login", {"password": "  " + PW + "  "}, follow=False)
 check("вхід не ламається через пробіли навколо пароля", _st == 302, _st)
-_st, _body, _ = post("/admin/login", {"password": "admin123"}, follow=False)
+_st, _body, _ = post("/admin/login", {"password": PW}, follow=False)
 check("вхід звичайним паролем", _st == 302, _st)
 _st, _body, _ = post("/admin/login", {"password": "admin124"})
 check("невірний пароль: пояснення про розкладку",
       _st == 200 and "розкладка клавіатури" in _body, _st)
-_st, _body, _ = post("/admin/password", {"old": "admin123", "new": "  korot  "}, cookie)
+_st, _body, _ = post("/admin/password", {"old": PW, "new": "  korot  "}, cookie)
 check("пароль із пробілами теж перевіряється на довжину", _st == 400, _body[:60])
+
+
+# ---------- навигация по разделам админки ----------
+import re as _re
+_nav_ids = _re.findall(r'data-nav="([a-z-]+)"', adm)
+check("адмінка: навігація має 8 розділів", len(_nav_ids) == 8, _nav_ids)
+check("адмінка: навігація в landmark з назвою",
+      'aria-label="Розділи панелі"' in adm and "<nav" in adm)
+_missing = [i for i in _nav_ids if f'id="{i}"' not in adm]
+check("адмінка: у кожного посилання є розділ на сторінці", not _missing, _missing)
+check("адмінка: посилання ведуть на власні якорі",
+      all(f'href="#{i}"' in adm for i in _nav_ids))
+_acss2 = open(_os.path.join(_here, "static", "admin.css"), encoding="utf-8").read()
+check("адмінка: якір не ховається під шапкою (scroll-margin-top)",
+      "scroll-margin-top:92px" in _acss2)
+_ajs2 = open(_os.path.join(_here, "static", "admin.js"), encoding="utf-8").read()
+check("адмінка: поточний розділ позначається aria-current",
+      'aria-current", "location"' in _ajs2 or "aria-current" in _ajs2)
+check("адмінка: у низу сторінки активний останній розділ", "atBottom" in _ajs2)
+check("адмінка: на телефоні активна вкладка підкручується у видиму зону",
+      "is-scrollable" in _ajs2 and "is-scrollable" in _acss2)
 
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:

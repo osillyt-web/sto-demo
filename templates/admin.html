@@ -25,14 +25,29 @@
 </header>
 
 <main class="wrap adm-main">
-  <section class="stats">
+  <nav class="adm-nav" aria-label="Розділи панелі">
+    <p class="adm-nav-title">Розділи</p>
+    <ol class="adm-nav-list">
+      <li><a href="#leads" data-nav="leads">Заявки</a></li>
+      <li><a href="#load" data-nav="load">Календар</a></li>
+      <li><a href="#contacts" data-nav="contacts">Контакти й слоти</a></li>
+      <li><a href="#services" data-nav="services">Послуги й ціни</a></li>
+      <li><a href="#analytics" data-nav="analytics">Аналітика</a></li>
+      <li><a href="#tg" data-nav="tg">Telegram</a></li>
+      <li><a href="#ops" data-nav="ops">Стан системи</a></li>
+      <li><a href="#security" data-nav="security">Пароль</a></li>
+    </ol>
+  </nav>
+
+  <div class="adm-body">
+    <section class="stats">
     <div class="stat"><b id="st-total">—</b><span>заявок усього</span></div>
     <div class="stat"><b id="st-new">—</b><span>нових без відповіді</span></div>
     <div class="stat"><b id="st-today">—</b><span>заявок сьогодні</span></div>
     <div class="stat stat-accent"><b id="st-conv">—</b><span>частка нових</span></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="leads">
     <div class="panel-head">
       <h2>Заявки з сайту</h2>
       <div class="panel-tools">
@@ -90,7 +105,7 @@
     </form>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="services">
     <div class="panel-head">
       <h2>Послуги та ціни</h2>
       <div class="panel-tools">
@@ -184,6 +199,7 @@
   </section>
 
   <p class="adm-foot">Демо-панель. Зміни в послугах одразу видно на сайті; заявки зберігаються в SQLite.</p>
+  </div>
 </main>
 
 <div class="toast" id="toast" role="status"></div>
