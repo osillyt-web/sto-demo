@@ -76,6 +76,8 @@
   </div>
 </header>
 
+<main id="main">
+
 <section class="hero">
   <div class="hero-bg" aria-hidden="true">
     <picture>
@@ -115,14 +117,14 @@
   </div>
 </section>
 
-<section class="strip">
+<div class="strip">
   <div class="wrap strip-inner">
     <div class="strip-item"><b>Фіксована ціна</b><span>погоджуємо до початку робіт</span></div>
     <div class="strip-item"><b>Фото-звіт</b><span>кожен етап у вашому чаті</span></div>
     <div class="strip-item"><b>Гарантія 12 міс</b><span>на роботи та запчастини</span></div>
     <div class="strip-item"><b>Запчастини в наявності</b><span>оригінал або аналог на вибір</span></div>
   </div>
-</section>
+</div>
 
 <section id="services" class="section">
   <div class="wrap">
@@ -218,7 +220,7 @@
         <p class="calc-note">Кошторис з'явиться у формі запису. Оплата — після робіт.</p>
       </form>
     </div>
-    <aside class="calc-aside">
+    <div class="calc-aside">
       <h3>Як формується ціна</h3>
       <ul class="bullets">
         <li><b>Базова вартість</b> роботи — за прайсом.</li>
@@ -232,7 +234,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
         <span>Гарантія 12 місяців на виконані роботи — письмово в замовленні.</span>
       </div>
-    </aside>
+    </div>
   </div>
 </section>
 
@@ -253,7 +255,7 @@
   <div class="wrap">
     <div class="sec-head"><div><h2>Прайс</h2>
       <p class="sub">Базові ціни без класу авто. Точна вартість — у калькуляторі вище.</p></div></div>
-    <div class="table-wrap">
+    <div class="table-wrap" role="region" aria-label="Таблиця цін" tabindex="0">
       <table class="price-table">
         <thead><tr><th>Послуга</th><th>Що входить</th><th>Ціна</th></tr></thead>
         <tbody>
@@ -301,10 +303,10 @@
     <div class="sec-head"><div><h2>Гарантія і прозорість</h2>
       <p class="sub">Це не обіцянки на словах — кожен пункт зафіксований у замовленні.</p></div></div>
     <div class="trust">
-      <article class="trust-card"><b>12 місяців</b><span>Гарантія на виконані роботи письмово. Запчастини, які ставимо ми, — гарантія виробника.</span></article>
-      <article class="trust-card"><b>Ціна до робіт</b><span>Суму погоджуємо до початку і не змінюємо без вашої згоди. Жодних «доплат за складність».</span></article>
-      <article class="trust-card"><b>Фото-звіт</b><span>Фотографуємо етапи й зняті деталі, надсилаємо в чат. Ви бачите, за що платите.</span></article>
-      <article class="trust-card"><b>Заміна авто</b><span>Якщо не встигаємо в строк — попереджаємо заздалегідь і даємо підміну або пріоритет.</span></article>
+      <div class="trust-card"><b>12 місяців</b><span>Гарантія на виконані роботи письмово. Запчастини, які ставимо ми, — гарантія виробника.</span></div>
+      <div class="trust-card"><b>Ціна до робіт</b><span>Суму погоджуємо до початку і не змінюємо без вашої згоди. Жодних «доплат за складність».</span></div>
+      <div class="trust-card"><b>Фото-звіт</b><span>Фотографуємо етапи й зняті деталі, надсилаємо в чат. Ви бачите, за що платите.</span></div>
+      <div class="trust-card"><b>Заміна авто</b><span>Якщо не встигаємо в строк — попереджаємо заздалегідь і даємо підміну або пріоритет.</span></div>
     </div>
   </div>
 </section>
@@ -371,7 +373,7 @@
       </form>
     </div>
 
-    <aside class="book-aside">
+    <div class="book-aside">
       <h3>Контакти</h3>
       <p class="mini">Працюємо {{C_HOURS}}. Неділя — за домовленістю для кузовних робіт.</p>
       <ul class="contacts-list">
@@ -404,9 +406,11 @@
         <span class="map-text"><b>Київ, вул. Автосервісна, 12</b>
           <small>Відкрити в Google Maps →</small></span>
       </a>
-    </aside>
+    </div>
   </div>
 </section>
+
+</main>
 
 <footer class="foot" id="contacts">
   <div class="wrap foot-inner">
@@ -447,16 +451,16 @@
   </div>
 </footer>
 
-<div class="float-cta" id="float-cta">
+<div class="float-cta" id="float-cta" role="complementary" aria-label="Швидкий звʼязок">
   <a class="fc-call" href="tel:{{C_PHONE_RAW}}" aria-label="Подзвонити">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h3l2 5-2 1a11 11 0 0 0 5 5l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
   </a>
   <a class="btn btn-accent fc-book" href="#book">Записатись на сервіс</a>
 </div>
 
-<div class="lightbox" id="lightbox" hidden>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Перегляд фото" hidden>
   <button class="lb-close" type="button" aria-label="Закрити">×</button>
-  <img id="lb-img" src="" alt="">
+  <img id="lb-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
 </div>
 
 <script type="application/json" id="slot-data">{{SLOT_DAYS}}</script>

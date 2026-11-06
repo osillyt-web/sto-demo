@@ -38,6 +38,8 @@
   </div>
 </header>
 
+<main id="main">
+
 <section class="cases-hero">
   <div class="wrap">
     <p class="eyebrow"><span class="dot"></span> Портфоліо · 3 проєкти</p>
@@ -53,7 +55,7 @@
   </div>
 </section>
 
-<main class="wrap cases-list">
+<div class="wrap cases-list">
 
   <!-- 1 -->
   <article class="case" id="case-sto">
@@ -64,11 +66,11 @@
         <p class="case-lead">Автосервіс втрачав заявки: люди писали в директ і на Viber, адміністратор
           не встигав відповідати, частина клієнтів ішла до конкурентів.</p>
       </div>
-      <aside class="case-facts">
+      <div class="case-facts">
         <div><span>Строк</span><b>8 днів</b></div>
         <div><span>Стек</span><b>Python · SQLite · HTML/CSS/JS</b></div>
         <div><span>Щомісячні платежі</span><b>немає</b></div>
-      </aside>
+      </div>
     </div>
 
     <div class="case-media two">
@@ -124,11 +126,11 @@
         <p class="case-lead">Пальне видавали «на словах», записи вели в зошиті. Наприкінці місяця
           ніхто не міг сказати, скільки пального пішло на конкретну техніку.</p>
       </div>
-      <aside class="case-facts">
+      <div class="case-facts">
         <div><span>Строк</span><b>5 днів</b></div>
         <div><span>Стек</span><b>Python · aiogram · SQLite</b></div>
         <div><span>Хостинг</span><b>безкоштовний тариф</b></div>
-      </aside>
+      </div>
     </div>
 
     <div class="case-media two">
@@ -170,11 +172,11 @@
         <p class="case-lead">Людям зі слабким зором і тим, хто багато їздить, потрібно слухати текст,
           а не читати з екрана. Готові застосунки або платні, або ламають вимову на українській.</p>
       </div>
-      <aside class="case-facts">
+      <div class="case-facts">
         <div><span>Платформа</span><b>Android (Kotlin, Compose)</b></div>
         <div><span>Мови</span><b>uk · ru · en</b></div>
         <div><span>Озвучення</span><b>Edge TTS + локальні голоси</b></div>
-      </aside>
+      </div>
     </div>
 
     <div class="case-media two">
@@ -184,7 +186,7 @@
           <p class="mock-title">Розділ 3 · Після дощу</p>
           <div class="mock-lines"><i></i><i></i><i></i><i style="width:62%"></i></div>
           <div class="mock-player">
-            <button type="button" aria-hidden="true">▶</button>
+            <span class="mock-play" aria-hidden="true">▶</span>
             <div class="mock-bar"><i style="width:46%"></i></div>
             <span>04:12 / 09:30</span>
           </div>
@@ -218,6 +220,8 @@
       <a class="btn btn-ghost btn-lg" href="/">Подивитися живий сайт</a>
     </div>
   </section>
+</div>
+
 </main>
 
 <footer class="foot">

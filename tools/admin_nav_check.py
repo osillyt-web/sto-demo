@@ -29,7 +29,8 @@ def check(label, ok, detail=""):
 
 def run_engine(name, browser_type, width, height, mobile=False):
     browser = browser_type.launch()
-    ctx = browser.new_context(viewport={"width": width, "height": height},
+    # bypass_csp: сайт отдаёт строгий CSP script-src 'self'; axe подключаем только на время проверки
+    ctx = browser.new_context(viewport={"width": width, "height": height}, bypass_csp=True,
                              is_mobile=mobile, has_touch=mobile,
                              device_scale_factor=2 if mobile else 1)
     page = ctx.new_page()
@@ -40,6 +41,19 @@ def run_engine(name, browser_type, width, height, mobile=False):
     page.click("button[type=submit]")
     page.wait_for_url("**/admin", timeout=15000)
     page.wait_for_timeout(1800)
+
+    # доступность самой панели: тот же движок axe, что внутри Lighthouse
+    axe_path = os.path.join(REPO, "tools", "axe.min.js")
+    if os.path.exists(axe_path):
+        page.add_script_tag(content=open(axe_path, encoding="utf-8").read())
+        axe_res = page.evaluate("""async () => {
+            const r = await axe.run(document, {runOnly: {type: 'tag',
+                values: ['wcag2a','wcag2aa','wcag21a','wcag21aa','best-practice']}});
+            return r.violations.map(v => ({id: v.id, impact: v.impact, nodes: v.nodes.length,
+                                           target: v.nodes[0] ? v.nodes[0].target : null}));
+        }""")
+        tag0 = f"[{name} {width}px]"
+        check(f"{tag0} панель: нарушений доступности нет (axe)", not axe_res, axe_res[:3])
 
     info = page.evaluate("""() => {
         const links = [...document.querySelectorAll('.adm-nav-list a')];

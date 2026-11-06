@@ -110,7 +110,8 @@
       <table class="responsive">
         <thead><tr>
           <th class="hide-sm">Дата</th><th>Клієнт</th><th class="hide-sm">Послуга / авто</th>
-          <th class="hide-sm">Деталі</th><th>Нотатка</th><th>Статус</th><th></th>
+          <th class="hide-sm">Деталі</th><th>Нотатка</th><th>Статус</th>
+          <th><span class="sr-only">Дії</span></th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -143,7 +144,8 @@
     $("#svc-box").innerHTML = `
       <table class="responsive">
         <thead><tr>
-          <th>Назва</th><th>Ціна</th><th>База, ₴</th><th class="hide-sm">Опис</th><th>Активна</th><th></th>
+          <th>Назва</th><th>Ціна</th><th>База, ₴</th><th class="hide-sm">Опис</th><th>Активна</th>
+          <th><span class="sr-only">Дії</span></th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -185,7 +187,7 @@
 
     box.innerHTML = `
       <table class="cal-table">
-        <thead><tr><th></th>${head}</tr></thead>
+        <thead><tr><th class="cal-time"><span class="sr-only">Час</span></th>${head}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <p class="hint">Клітинка — скільки авто зайнято з ${data.capacity} можливих на цю годину.</p>
@@ -363,7 +365,10 @@
 
     const filterBtn = e.target.closest(".seg-btn");
     if (filterBtn) {
-      $$(".seg-btn").forEach(b => b.classList.toggle("active", b === filterBtn));
+      $$(".seg-btn").forEach(b => {
+        b.classList.toggle("active", b === filterBtn);
+        b.setAttribute("aria-pressed", b === filterBtn ? "true" : "false");
+      });
       state.filter = filterBtn.dataset.filter;
       loadLeads();
     }

@@ -636,9 +636,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(data)
 
-    def json_out(self, obj, code=200):
+    def json_out(self, obj, code=200, cache="no-store"):
+        # по умолчанию без кэша (админские данные), публичным ответам кэш задаётся явно
         self.send(code, json.dumps(obj, ensure_ascii=False), "application/json; charset=utf-8",
-                  cache="no-store")
+                  cache=cache)
 
     def redirect(self, to, cookie=None):
         extra = {"Location": to}
@@ -721,11 +722,11 @@ class Handler(BaseHTTPRequestHandler):
             conn = get_db()
             data = {"days": slots_overview(conn), "capacity": slot_capacity(conn)}
             conn.close()
-            return self.json_out(data)
+            return self.json_out(data, cache="no-cache")
         if path == "/api/slots":
             day = parse_day((qs.get("date") or [""])[0])
             if not day:
-                return self.json_out({"error": "Вкажіть дату"}, 400)
+                return self.json_out({"error": "Вкажіть дату"}, 400, cache="no-cache")
             conn = get_db()
             data = {"date": day.isoformat(), "slots": day_slots(conn, day),
                     "capacity": slot_capacity(conn)}
@@ -869,7 +870,7 @@ class Handler(BaseHTTPRequestHandler):
             rows = [dict(r) for r in conn.execute(
                 "SELECT * FROM services WHERE active=1 ORDER BY sort, id")]
             conn.close()
-            return self.json_out(rows)
+            return self.json_out(rows, cache="no-cache")
         if path == "/api/calc":
             conn = get_db()
             services = [{"title": r["title"], "base": r["base"]} for r in conn.execute(
@@ -877,7 +878,7 @@ class Handler(BaseHTTPRequestHandler):
             conn.close()
             return self.json_out({"services": services,
                                   "classes": [{"key": k, "title": v[0], "mult": v[1]}
-                                              for k, v in CLASSES.items()]})
+                                              for k, v in CLASSES.items()]}, cache="no-cache")
         if path in ("/api/health", "/health", "/status"):
             health = {"ok": False, "version": VERSION, "time": datetime.datetime.now().isoformat(timespec="seconds")}
             try:
@@ -1408,7 +1409,8 @@ class Handler(BaseHTTPRequestHandler):
         </figure>""" for name, cap, sub in gallery)
 
         reviews = "\n".join(f"""<article class="review" data-reveal>
-          <div class="stars" aria-label="Оцінка {n} з 5">{'★' * n}</div>
+          <h3 class="sr-only">Відгук клієнта: {esc(who)}</h3>
+          <div class="stars" role="img" aria-label="Оцінка {n} з 5">{'★' * n}</div>
           <p>«{esc(text)}»</p>
           <footer>{esc(who)} · <span>{esc(car)}</span></footer>
         </article>""" for who, car, n, text in REVIEWS)
@@ -1474,7 +1476,9 @@ class Handler(BaseHTTPRequestHandler):
                 .replace("{{C_REVIEWS_URL}}", esc(contacts["reviews_url"]))
                 .replace("{{C_REVIEWS_NOTE}}", esc(contacts["reviews_note"]))
                 .replace("{{YEAR}}", str(datetime.date.today().year)))
-        self.send(200, html, cache="no-store")
+        # public + обязательная перепроверка: данные (слоты) свежие, но браузер может вернуть
+        # страницу из своего кэша при навигации «назад» — это заметно быстрее
+        self.send(200, html, cache="public, max-age=0, must-revalidate")
 
     def log_message(self, fmt, *args):
         print("%s - %s" % (self.address_string(), fmt % args))

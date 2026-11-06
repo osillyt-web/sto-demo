@@ -559,6 +559,51 @@ check("адмінка: у низу сторінки активний остан�
 check("адмінка: на телефоні активна вкладка підкручується у видиму зону",
       "is-scrollable" in _ajs2 and "is-scrollable" in _acss2)
 
+
+# ---------- ориентиры страницы и доступность (по итогам проверок axe и W3C) ----------
+_, home_html, home_hdrs = get("/")
+check("головна: рівно один орієнтир main", home_html.count("<main") == 1 and 'id="main"' in home_html)
+for _p in ("/cases", "/services", "/admin/login"):
+    _, _b, _ = get(_p)
+    check(f"{_p}: є орієнтир main", "<main" in _b)
+check("головна: без aside (бокові колонки — не окремі орієнтири)", "<aside" not in home_html)
+check("головна: у зірок рейтингу є роль",
+      home_html.count('<div class="stars" role="img"') >= 1 and 'class="stars" aria-label' not in home_html)
+check("головна: немає зображень із порожнім src", 'src=""' not in home_html)
+check("головна: відгук має заголовок для скринрідера", 'class="sr-only">Відгук клієнта' in home_html)
+check("головна: полоса переваг — не section без заголовка", '<section class="strip">' not in home_html)
+check("головна: картки гарантій — не article без заголовка", '<article class="trust-card">' not in home_html)
+_, _to, _ = get("/services/to")
+check("/services/to: таблиця доступна з клавіатури",
+      'class="table-wrap" role="region"' in _to and 'tabindex="0"' in _to)
+_acss3 = open(_os.path.join(_here, "static", "style.css"), encoding="utf-8").read()
+check("стилі: підзаголовок у шапці таблиці має достатній контраст",
+      "opacity:.75" not in _acss3.split(".ptable th small")[1][:80])
+check("стилі: є клас для тексту лише для скринрідера", ".sr-only{" in _acss3)
+
+
+# ---------- доступность админки (по итогам проверки axe) ----------
+check("адмінка: у сторінки є головний заголовок h1", "<h1" in adm)
+check("адмінка: фільтр заявок — група кнопок, не вкладки",
+      'class="seg" role="group"' in adm and 'role="tablist"' not in adm)
+check("адмінка: у кнопок фільтра є aria-pressed",
+      adm.count('aria-pressed="') >= 3)
+check("адмінка: у порожніх заголовків таблиць є текст для скринрідера",
+      "Дії</span>" in _ajs2 and "Час</span>" in _ajs2)
+check("адмінка: посилання в тексті підкреслене (не тільки колір)",
+      "text-decoration:underline" in _acss2.split(".alert-link{")[1][:60])
+check("адмінка: підпис у підвалі має достатній контраст",
+      "#8b96a6" in _acss2.split(".adm-foot{")[1][:40])
+
+# ---------- кэш: публичное кэшируется с перепроверкой, приватное — нет ----------
+check("головна: Cache-Control дозволяє повернення назад (без no-store)",
+      "no-store" not in (home_hdrs.get("Cache-Control") or ""))
+_, _hh, _h = get("/admin/login")
+check("вхід в адмінку: Cache-Control no-store", "no-store" in (_h.get("Cache-Control") or ""))
+_, _hh2, _h2 = get("/api/slots/days")
+check("публічне API слотів: без no-store",
+      "no-store" not in (_h2.get("Cache-Control") or ""))
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)

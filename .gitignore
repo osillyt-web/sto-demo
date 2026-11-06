@@ -10,3 +10,10 @@ backup_v2/
 *.log
 backups/
 data/errors.log
+
+# артефакты проверок (не часть сайта)
+tools/axe.min.js
+tools/axe_report.json
+tools/vnu_report.json
+tools/w3c_report.json
+tools/report.json

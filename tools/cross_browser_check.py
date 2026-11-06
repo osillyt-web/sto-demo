@@ -115,19 +115,36 @@ def run(engine_name, launcher, shots):
         # форма: выбрать день и час, заполнить поля, проверить валидацию (без отправки)
         page.goto(BASE + "/", wait_until="load")
         page.wait_for_timeout(2200)
-        picked = page.evaluate("""() => {
-            const days = [...document.querySelectorAll('#days .day:not([disabled])')];
-            if (!days.length) return {ok:false, why:'нет доступных дней'};
-            days[0].click();
-            return {ok:true, text: days[0].textContent.trim().slice(0,20)};
-        }""")
-        page.wait_for_timeout(1200)
+        def pick_day(index):
+            return page.evaluate("""(i) => {
+                const days = [...document.querySelectorAll('#days .day:not([disabled])')];
+                if (!days.length) return {ok:false, why:'нет доступных дней'};
+                const d = days[Math.min(i, days.length - 1)];
+                d.click();
+                return {ok:true, text: d.textContent.trim().slice(0,20), total: days.length};
+            }""", index)
+
+        def wait_times(ms=5000):
+            """Ждём появления свободных часов: список приходит запросом, движки отвечают с разной скоростью.
+            А если сегодняшние часы уже прошли — день считается пустым, это не дефект сайта."""
+            try:
+                page.wait_for_selector("#times .time:not([disabled])", timeout=ms)
+                return True
+            except Exception:
+                return False
+
+        picked = pick_day(0)
+        have_times = wait_times()
+        if not have_times:
+            # берём следующий день: у сегодняшнего все часы могли уже пройти
+            picked = pick_day(1)
+            have_times = wait_times()
         times = page.evaluate("""() => {
             const t = [...document.querySelectorAll('#times .time:not([disabled])')];
             if (!t.length) return {ok:false, why:'нет свободных часов'};
             t[0].click();
             return {ok:true, text: t[0].textContent.trim().slice(0,20), total: t.length};
-        }""")
+        }""") if have_times else {"ok": False, "why": "свободные часы не появились"}
         page.wait_for_timeout(400)
         hidden = page.evaluate("() => ({date: document.getElementById('slot-date').value,"
                               " time: document.getElementById('slot-time').value})")

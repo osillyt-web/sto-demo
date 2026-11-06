@@ -25,6 +25,7 @@
 </header>
 
 <main class="wrap adm-main">
+  <h1 class="sr-only">Панель керування сайтом АвтоТочка</h1>
   <nav class="adm-nav" aria-label="Розділи панелі">
     <p class="adm-nav-title">Розділи</p>
     <ol class="adm-nav-list">
@@ -51,10 +52,10 @@
     <div class="panel-head">
       <h2>Заявки з сайту</h2>
       <div class="panel-tools">
-        <div class="seg" role="tablist">
-          <button class="seg-btn active" data-filter="all">Усі</button>
-          <button class="seg-btn" data-filter="new">Нові</button>
-          <button class="seg-btn" data-filter="done">Опрацьовані</button>
+        <div class="seg" role="group" aria-label="Фільтр заявок">
+          <button class="seg-btn active" data-filter="all" aria-pressed="true">Усі</button>
+          <button class="seg-btn" data-filter="new" aria-pressed="false">Нові</button>
+          <button class="seg-btn" data-filter="done" aria-pressed="false">Опрацьовані</button>
         </div>
         <input class="search" id="search" type="search" placeholder="Пошук: імʼя, телефон, авто" aria-label="Пошук заявок">
         <button class="btn btn-ghost btn-sm" id="reload">Оновити</button>

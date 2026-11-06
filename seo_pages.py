@@ -136,7 +136,7 @@ def build_service_page(conn, slug):
   </div>
 
   <h2 class="h2">Ціни</h2>
-  <div class="table-wrap">
+  <div class="table-wrap" role="region" aria-label="Тарифи" tabindex="0">
     <table class="ptable">
       <thead><tr><th>Робота</th>%s</tr></thead>
       <tbody>%s</tbody>
