@@ -27,7 +27,7 @@ import mimetypes
 import threading
 import urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote, quote
 
 from content import SERVICES, BRANDS, SERVICE_SLUG_BY_TITLE
 import seo_pages
@@ -657,9 +657,20 @@ class Handler(BaseHTTPRequestHandler):
         """HEAD нужен мониторингу и линк-чекерам: отдаём заголовки без тела."""
         self.do_GET()
 
+    JUNK_TAIL = "»«\"'`.,;:!?* \t"
+
     def do_GET(self):
         u = urlparse(self.path)
         path, qs = u.path, parse_qs(u.query)
+
+        # адреса часто копируют из чата вместе с кавычками: /admin» , /privacy" ,
+        # /services/to.  Такие «хвосты» не должны превращаться в 404 — срезаем и уводим на чистый адрес
+        decoded = unquote(path)
+        clean = decoded.rstrip(self.JUNK_TAIL)
+        if clean != decoded and clean not in ("", "/"):
+            query = ("?" + u.query) if u.query else ""
+            return self.send(301, "", extra={"Location": quote(clean, safe="/") + query})
+        path = clean or "/"
 
         if path == "/":
             return self.render_index()

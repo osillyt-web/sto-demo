@@ -467,6 +467,23 @@ check("на сторінці політики кнопка повернення 
 check("на /privacy телефон підставляється з налаштувань, без плейсхолдерів",
       "{{" not in priv and 'href="tel:' in priv)
 
+
+# ---------- адреса с «хвостами» из чата не должны давать 404 ----------
+for junk, expect in [("/admin%C2%BB", "/admin"), ("/privacy%22", "/privacy"),
+                     ("/services/to.", "/services/to"), ("/cases;", "/cases")]:
+    try:
+        with urllib.request.urlopen(BASE + junk) as r:
+            status, final = r.status, r.geturl()
+        ok = status == 200 and (expect in final or "/admin/login" in final)
+    except urllib.error.HTTPError as e:
+        ok, status, final = False, e.code, BASE + junk
+    check(f"адреса з хвостом {junk} веде на робочу сторінку", ok, f"{status} {final}")
+
+# нормальные адреса после нормализации не пострадали
+for p in ["/", "/admin", "/services", "/cases", "/privacy"]:
+    st, _, _ = get_soft(p)
+    check(f"нормальна адреса {p} не зламана", st in (200, 302), st)
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)
