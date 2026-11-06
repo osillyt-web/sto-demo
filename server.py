@@ -219,8 +219,15 @@ def verify_password(password, upgrade=True):
 
 
 def _save_auth(payload):
-    with open(AUTH_PATH, "w", encoding="utf-8") as fh:
+    """Атомарная запись: сначала во временный файл, потом подмена.
+    Если запись прервётся (свет, диск), пароль не останется полузаписанным —
+    файл либо старый, либо новый, и владелец не потеряет доступ."""
+    tmp = AUTH_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(payload, fh)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, AUTH_PATH)
 
 
 def set_password(password):

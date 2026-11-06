@@ -482,3 +482,50 @@
   loadAnalytics();
   loadSettings();
 })();
+
+
+/* кнопка «Догори»: появляется после прокрутки, поднимает страницу наверх */
+(() => {
+  "use strict";
+  const btn = document.getElementById("to-top");
+  if (!btn) return;
+
+  const SHOW_AFTER = 520;          // пикселей прокрутки, после которых кнопка появляется
+  let visible = false;
+  let ticking = false;
+
+  function sync() {
+    const should = window.scrollY > SHOW_AFTER;
+    if (should === visible) return;
+    visible = should;
+    btn.classList.toggle("show", visible);
+    btn.tabIndex = visible ? 0 : -1;   // невидимая кнопка не ловит Tab
+    btn.setAttribute("aria-hidden", visible ? "false" : "true");
+  }
+
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; sync(); });
+  }, { passive: true });
+
+  btn.addEventListener("click", () => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { window.scrollTo(0, 0); return; }
+    // своя покадровая прокрутка: не конфликтует со scroll-behavior:smooth на html
+    const html = document.documentElement;
+    const prev = html.style.scrollBehavior;
+    html.style.scrollBehavior = "auto";
+    const startY = window.scrollY, t0 = performance.now(), dur = 480;
+    const ease = t => 1 - Math.pow(1 - t, 3);
+    function step(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      window.scrollTo(0, startY * (1 - ease(p)));
+      if (p < 1) requestAnimationFrame(step); else html.style.scrollBehavior = prev;
+    }
+    requestAnimationFrame(step);
+    btn.blur();
+  });
+
+  sync();
+})();

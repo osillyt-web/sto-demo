@@ -508,6 +508,20 @@ check("адмінка: вимоги до пароля узгоджені з се
 check("адмінка: на сторінці актуальна вартість хешування",
       "600 000 ітерацій" in adm, "600 000" in adm)
 
+
+# ---------- кнопка «Догори» в адмінці ----------
+check("адмінка: кнопка «Догори» є в розмітці", 'id="to-top"' in adm and ">Догори<" in adm)
+_tag = adm.split('id="to-top"')[0].rsplit("<button", 1)[-1] + adm.split('id="to-top"')[1].split(">")[0]
+check("адмінка: кнопка доступна (aria-label, тип button)",
+      'aria-label="Догори — на початок сторінки"' in _tag and 'type="button"' in _tag, _tag.strip()[:90])
+_acss = open(_os.path.join(_here, "static", "admin.css"), encoding="utf-8").read()
+check("адмінка: стилі кнопки на місці (фіксована, 48 px, прихована за замовчуванням)",
+      ".to-top-fab" in _acss and "position:fixed" in _acss and "visibility:hidden" in _acss)
+_ajs = open(_os.path.join(_here, "static", "admin.js"), encoding="utf-8").read()
+check("адмінка: кнопка реагує на прокрутку й піднімає сторінку",
+      'getElementById("to-top")' in _ajs and "scrollTo(0, 0)" in _ajs and "SHOW_AFTER" in _ajs)
+check("адмінка: невидима кнопка прибрана з Tab", "tabIndex = visible ? 0 : -1" in _ajs)
+
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 if lead_id:
     post("/admin/lead", {"action": "delete", "id": lead_id}, cookie)
