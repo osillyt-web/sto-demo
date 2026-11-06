@@ -140,12 +140,12 @@ SLOT_DAYS_AHEAD = 14          # на скільки днів вперед пок
 CONTACT_DEFAULTS = {
     "phone": "+380 44 000-00-00",
     "phone_raw": "+380440000000",
-    "address": "Київ, вул. Автосервісна, 12",
+    "address": "Київ, вул. Кирилівська, 41",
     "hours": "Пн–Сб, 9:00–19:00",
     "telegram": "https://t.me/autotochka_demo",
     "viber": "viber://chat?number=%2B380440000000",
     "whatsapp": "https://wa.me/380440000000",
-    "reviews_url": "https://maps.google.com/?q=Kyiv,+%D0%B2%D1%83%D0%BB.+%D0%90%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D1%96%D1%81%D0%BD%D0%B0,+12",
+    "reviews_url": "https://www.google.com/maps/search/?api=1&query=50.4715341,30.4985365",
     "reviews_note": "4.9 з 5 · 213 відгуків у Google",
 }
 
@@ -618,7 +618,7 @@ class Handler(BaseHTTPRequestHandler):
             "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
             "Content-Security-Policy": (
                 "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-                "script-src 'self'; frame-src https://www.google.com; "
+                "script-src 'self'; frame-src https://www.google.com https://maps.google.com; "
                 "connect-src 'self'; form-action 'self'; base-uri 'self'"),
         }
         if cache:
@@ -1513,9 +1513,9 @@ class Handler(BaseHTTPRequestHandler):
             "telephone": "+380440000000",
             "priceRange": "450–25000 ₴",
             "image": f"{SITE_URL}/static/img/hero.webp",
-            "address": {"@type": "PostalAddress", "streetAddress": "вул. Автосервісна, 12",
-                        "addressLocality": "Київ", "postalCode": "02000", "addressCountry": "UA"},
-            "geo": {"@type": "GeoCoordinates", "latitude": 50.4501, "longitude": 30.5234},
+            "address": {"@type": "PostalAddress", "streetAddress": "вул. Кирилівська, 41",
+                        "addressLocality": "Київ", "addressCountry": "UA"},
+            "geo": {"@type": "GeoCoordinates", "latitude": 50.4715341, "longitude": 30.4985365},
             "openingHoursSpecification": [{
                 "@type": "OpeningHoursSpecification",
                 "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],

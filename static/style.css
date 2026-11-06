@@ -414,8 +414,6 @@ textarea{resize:vertical}
 .book-aside .contacts-list span{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .book-aside .contacts-list b,.book-aside .contacts-list a{font-size:15.5px}
 .book-aside .contacts-list a:hover{color:var(--accent)}
-.book-aside .map-box{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
-.book-aside .map-box iframe{display:block;width:100%;height:260px;border:0;filter:grayscale(.3) contrast(1.05)}
 
 /* ---------- прочее ---------- */
 .calc-note{font-size:12.5px;color:var(--muted);margin:12px 0 0}
@@ -464,20 +462,16 @@ textarea{resize:vertical}
 .legal-back{margin-top:34px}
 
 /* ---------- карта-заглушка (без внешнего iframe, грузится мгновенно) ---------- */
-.map-box{display:block;position:relative;height:220px;border-radius:var(--r);overflow:hidden;
-  border:1px solid var(--line);background:#12161d;text-decoration:none;isolation:isolate}
-.map-box:hover{border-color:rgba(255,106,26,.5)}
-.map-grid{position:absolute;inset:-20%;background-image:
-  linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),
-  linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px),
-  radial-gradient(circle at 30% 70%,rgba(255,106,26,.13),transparent 55%);
-  background-size:34px 34px,34px 34px,100% 100%;transform:rotate(-8deg)}
-.map-pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-size:30px;
-  filter:drop-shadow(0 6px 14px rgba(0,0,0,.55))}
-.map-text{position:absolute;left:0;right:0;bottom:0;padding:14px 16px;display:grid;gap:3px;
-  background:linear-gradient(180deg,transparent,rgba(6,8,11,.92))}
-.map-text b{font-size:14.5px;color:var(--text)}
-.map-text small{font-size:12.5px;color:var(--accent)}
+.map-card{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
+/* показываем настоящую карту города, пока грузится интерактивная: человек
+   никогда не должен видеть пустой серый прямоугольник */
+.map-frame{display:block;width:100%;height:230px;border:0;filter:saturate(.85);
+  background:#e8e4dd url('/static/img/map-preview.png') center/cover no-repeat}
+.map-info{display:grid;gap:2px;padding:12px 14px;border-top:1px solid var(--line)}
+.map-info b{font-size:14.5px;color:var(--text)}
+.map-info small{font-size:12.5px;color:var(--muted)}
+.map-route{font-size:13px;color:var(--accent);text-decoration:none;margin-top:4px;font-weight:600}
+.map-route:hover{text-decoration:underline}
 
 /* ---------- панель действий внизу (только телефон) ----------
    По рекомендациям для мобильных: высота панели 56–72 px, одна главная

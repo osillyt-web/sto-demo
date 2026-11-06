@@ -566,7 +566,8 @@ check("у файлі пароля немає самого пароля", set(_au
 # ---------- кнопка «показать пароль» ----------
 _, lp, _ = get("/admin/login")
 check("вхід: поле пароля з кнопкою показу", 'data-eye' in lp and "password-eye.js" in lp)
-check("вхід: підказка про демо-пароль лише як демо-пароль", "Демо-пароль" in lp)
+check("вхід: підказка про демо-пароль не світиться, коли пароль змінено",
+      "Демо-пароль" not in lp or "admin123" in lp)
 check("вхід: без незамінених плейсхолдерів", "{{" not in lp)
 st, eye, _ = get("/static/password-eye.js")
 check("скрипт кнопки віддається (200) і вміє перемикати стан",
@@ -660,6 +661,43 @@ check("адмінка: посилання в тексті підкреслене
       "text-decoration:underline" in _acss2.split(".alert-link{")[1][:60])
 check("адмінка: підпис у підвалі має достатній контраст",
       "#8b96a6" in _acss2.split(".adm-foot{")[1][:40])
+
+# ---------- реальна карта та адреса СТО (не заглушка) ----------
+_, home3, home3_h = get("/")
+check("головна: є блок реальної карти .map-card", 'class="map-card"' in home3)
+check("головна: карта — справжній iframe Google Maps з координатами",
+      "https://www.google.com/maps?q=50.4715341,30.4985365" in home3)
+check("головна: у карти є підпис для скринрідера", 'title="Мапа: АвтоТочка, Київ, вул. Кирилівська, 41"' in home3)
+check("головна: карта вантажиться ліниво (не гальмує перший екран)",
+      'loading="lazy"' in home3)
+check("головна: адреса вказана і збігається з точкою на карті",
+      "Київ, вул. Кирилівська, 41" in home3)
+check("головна: є посилання «Прокласти маршрут» на ці координати",
+      "maps/dir/?api=1&amp;destination=50.4715341,30.4985365" in home3 or
+      "maps/dir/?api=1&destination=50.4715341,30.4985365" in home3)
+check("головна: фальшивої вулиці «Автосервісна» більше немає", "Автосервісна" not in home3)
+check("сторінка приватності: там само реальна адреса",
+      "Автосервісна" not in get("/privacy")[1])
+_m = _re.search(r'"geo": \{"@type": "GeoCoordinates", "latitude": ([0-9.]+), "longitude": ([0-9.]+)\}', home3)
+check("розмітка LocalBusiness: координати збігаються з картою",
+      bool(_m) and _m.group(1) == "50.4715341" and _m.group(2) == "30.4985365", _m.groups() if _m else None)
+check("розмітка LocalBusiness: вулиця в адресі — Кирилівська",
+      '"streetAddress": "вул. Кирилівська, 41"' in home3)
+_csp = home3_h.get("Content-Security-Policy") or ""
+check("CSP дозволяє вбудовувати карту Google", "frame-src" in _csp and "www.google.com" in _csp)
+_css_map = get("/static/style.css")[1]
+# картинка двоичная — читаем только код ответа и размер, без декодирования в текст
+_ic = _http.HTTPConnection("127.0.0.1", 8000, timeout=10)
+_ic.request("GET", "/static/img/map-preview.png")
+_ir = _ic.getresponse()
+_st_img, _len_img = _ir.status, len(_ir.read())
+_ic.close()
+check("карта: є справжня підкладка-картинка місцевості (не сірий прямокутник)",
+      _st_img == 200 and _len_img > 20000, f"{_st_img}, {_len_img} байт")
+check("стилі: підкладка карти підключена до iframe",
+      "map-preview.png" in _css_map)
+check("стилі: карта має власний блок, а не декоративну сітку",
+      ".map-card{" in _css_map and ".map-grid" not in _css_map)
 
 # ---------- кэш: публичное кэшируется с перепроверкой, приватное — нет ----------
 check("головна: Cache-Control дозволяє повернення назад (без no-store)",
