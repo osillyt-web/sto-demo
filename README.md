@@ -189,7 +189,8 @@ content.py            тексты услуг и марок
 seo_pages.py          генераторы /services и /brands
 GOOGLE_BUSINESS.md    инструкция: карточка Google и отзывы
 HANDOVER.md           деплой, домен, бэкапы, мониторинг, приёмка у клиента
-tools/contrast_sweep.js  проверка страниц на невидимый текст (вставить в консоль браузера)
+tools/contrast_sweep.js
+ tools/cross_browser_check.py  три движка (Blink/Gecko/WebKit), 75 проверок  проверка страниц на невидимый текст (вставить в консоль браузера)
 ops.py                резервные копии и журнал действий
 .env.example          переменные окружения
 static/style.css      тема сайта

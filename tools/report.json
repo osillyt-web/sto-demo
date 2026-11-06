@@ -1,0 +1,452 @@
+[
+ {
+  "engine": "chromium",
+  "check": "/ → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/services → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/services/to → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/brands → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/cases → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/privacy → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/admin/login → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/nope → 404",
+  "ok": true,
+  "detail": "ожидали 404"
+ },
+ {
+  "engine": "chromium",
+  "check": "календарь: 14 дней",
+  "ok": true,
+  "detail": "14"
+ },
+ {
+  "engine": "chromium",
+  "check": "часы: 10 плиток",
+  "ok": true,
+  "detail": "10"
+ },
+ {
+  "engine": "chromium",
+  "check": "слоты: есть свободные часы",
+  "ok": true,
+  "detail": "4"
+ },
+ {
+  "engine": "chromium",
+  "check": "воскресенье закрыто",
+  "ok": true,
+  "detail": "2"
+ },
+ {
+  "engine": "chromium",
+  "check": "нет горизонтальной прокрутки",
+  "ok": true,
+  "detail": "scrollW 390 / innerW 390"
+ },
+ {
+  "engine": "chromium",
+  "check": "CSS загрузился (правила + жирность заголовка)",
+  "ok": true,
+  "detail": "правил 486, h1 вес 800"
+ },
+ {
+  "engine": "chromium",
+  "check": "шапка на месте",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "chromium",
+  "check": "кнопка «Записатись» есть",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "chromium",
+  "check": "ошибок JS нет",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "chromium",
+  "check": "нет ответов 4xx/5xx",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "chromium",
+  "check": "нет оборванных запросов",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "chromium",
+  "check": "низ страницы без прокрутки вбок",
+  "ok": true,
+  "detail": "0"
+ },
+ {
+  "engine": "chromium",
+  "check": "день выбирается кликом",
+  "ok": true,
+  "detail": "{'ok': True, 'text': 'Сьогодні6.118 вільно'}"
+ },
+ {
+  "engine": "chromium",
+  "check": "час выбирается кликом",
+  "ok": true,
+  "detail": "{'ok': True, 'text': '15:002 місця', 'total': 4}"
+ },
+ {
+  "engine": "chromium",
+  "check": "выбор попал в форму",
+  "ok": true,
+  "detail": "{'date': '2026-11-06', 'time': '15:00'}"
+ },
+ {
+  "engine": "chromium",
+  "check": "пустая форма не уходит на сервер",
+  "ok": true,
+  "detail": "http://127.0.0.1:8000/"
+ },
+ {
+  "engine": "chromium",
+  "check": "пустая форма объясняет, что не так",
+  "ok": true,
+  "detail": "Вкажіть ім'я"
+ },
+ {
+  "engine": "firefox",
+  "check": "/ → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/services → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/services/to → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/brands → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/cases → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/privacy → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/admin/login → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/nope → 404",
+  "ok": true,
+  "detail": "ожидали 404"
+ },
+ {
+  "engine": "firefox",
+  "check": "календарь: 14 дней",
+  "ok": true,
+  "detail": "14"
+ },
+ {
+  "engine": "firefox",
+  "check": "часы: 10 плиток",
+  "ok": true,
+  "detail": "10"
+ },
+ {
+  "engine": "firefox",
+  "check": "слоты: есть свободные часы",
+  "ok": true,
+  "detail": "4"
+ },
+ {
+  "engine": "firefox",
+  "check": "воскресенье закрыто",
+  "ok": true,
+  "detail": "2"
+ },
+ {
+  "engine": "firefox",
+  "check": "нет горизонтальной прокрутки",
+  "ok": true,
+  "detail": "scrollW 390 / innerW 390"
+ },
+ {
+  "engine": "firefox",
+  "check": "CSS загрузился (правила + жирность заголовка)",
+  "ok": true,
+  "detail": "правил 486, h1 вес 800"
+ },
+ {
+  "engine": "firefox",
+  "check": "шапка на месте",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "firefox",
+  "check": "кнопка «Записатись» есть",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "firefox",
+  "check": "ошибок JS нет",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "firefox",
+  "check": "нет ответов 4xx/5xx",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "firefox",
+  "check": "нет оборванных запросов",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "firefox",
+  "check": "низ страницы без прокрутки вбок",
+  "ok": true,
+  "detail": "0"
+ },
+ {
+  "engine": "firefox",
+  "check": "день выбирается кликом",
+  "ok": true,
+  "detail": "{'ok': True, 'text': 'Сьогодні6.118 вільно'}"
+ },
+ {
+  "engine": "firefox",
+  "check": "час выбирается кликом",
+  "ok": true,
+  "detail": "{'ok': True, 'text': '15:002 місця', 'total': 4}"
+ },
+ {
+  "engine": "firefox",
+  "check": "выбор попал в форму",
+  "ok": true,
+  "detail": "{'date': '2026-11-06', 'time': '15:00'}"
+ },
+ {
+  "engine": "firefox",
+  "check": "пустая форма не уходит на сервер",
+  "ok": true,
+  "detail": "http://127.0.0.1:8000/"
+ },
+ {
+  "engine": "firefox",
+  "check": "пустая форма объясняет, что не так",
+  "ok": true,
+  "detail": "Вкажіть ім'я"
+ },
+ {
+  "engine": "webkit",
+  "check": "/ → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/services → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/services/to → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/brands → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/cases → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/privacy → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/admin/login → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/nope → 404",
+  "ok": true,
+  "detail": "ожидали 404"
+ },
+ {
+  "engine": "webkit",
+  "check": "календарь: 14 дней",
+  "ok": true,
+  "detail": "14"
+ },
+ {
+  "engine": "webkit",
+  "check": "часы: 10 плиток",
+  "ok": true,
+  "detail": "10"
+ },
+ {
+  "engine": "webkit",
+  "check": "слоты: есть свободные часы",
+  "ok": true,
+  "detail": "4"
+ },
+ {
+  "engine": "webkit",
+  "check": "воскресенье закрыто",
+  "ok": true,
+  "detail": "2"
+ },
+ {
+  "engine": "webkit",
+  "check": "нет горизонтальной прокрутки",
+  "ok": true,
+  "detail": "scrollW 390 / innerW 390"
+ },
+ {
+  "engine": "webkit",
+  "check": "CSS загрузился (правила + жирность заголовка)",
+  "ok": true,
+  "detail": "правил 486, h1 вес 800"
+ },
+ {
+  "engine": "webkit",
+  "check": "шапка на месте",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "webkit",
+  "check": "кнопка «Записатись» есть",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "webkit",
+  "check": "ошибок JS нет",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "webkit",
+  "check": "нет ответов 4xx/5xx",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "webkit",
+  "check": "нет оборванных запросов",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "engine": "webkit",
+  "check": "низ страницы без прокрутки вбок",
+  "ok": true,
+  "detail": "0"
+ },
+ {
+  "engine": "webkit",
+  "check": "день выбирается кликом",
+  "ok": true,
+  "detail": "{'ok': True, 'text': 'Сьогодні6.118 вільно'}"
+ },
+ {
+  "engine": "webkit",
+  "check": "час выбирается кликом",
+  "ok": true,
+  "detail": "{'ok': True, 'text': '15:002 місця', 'total': 4}"
+ },
+ {
+  "engine": "webkit",
+  "check": "выбор попал в форму",
+  "ok": true,
+  "detail": "{'date': '2026-11-06', 'time': '15:00'}"
+ },
+ {
+  "engine": "webkit",
+  "check": "пустая форма не уходит на сервер",
+  "ok": true,
+  "detail": "http://127.0.0.1:8000/"
+ },
+ {
+  "engine": "webkit",
+  "check": "пустая форма объясняет, что не так",
+  "ok": true,
+  "detail": "Вкажіть ім'я"
+ }
+]
