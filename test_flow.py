@@ -727,6 +727,8 @@ check("тарифи: джерело даних про уразливості в�
 _home = get("/")[1]
 check("головна: посилання на портфоліо в підвалі виділене",
       'class="foot-link-accent" href="/cases"' in _home)
+check("головна: у посилання на портфоліо є стрілка, прихована від скринридерів",
+      'Портфоліо <span aria-hidden="true">→</span>' in _home)
 check("тарифи: сторінка є в карті сайту", "/pricing" in get("/sitemap.xml")[1])
 check("портфоліо: посилання на тарифи в меню", 'href="/pricing"' in get("/cases")[1])
 
