@@ -22,8 +22,11 @@ import urllib.request
 
 BASE = "http://127.0.0.1:8000"
 JAVA = os.environ.get("JAVA") or r"C:\Program Files\Android\Android Studio\jbr\bin\java.exe"
-VNU_JAR = os.environ.get("VNU_JAR") or os.path.expandvars(
-    r"%LOCALAPPDATA%\hermes\cache\scratch\vnu.jar")
+# сначала свой vnu.jar рядом со скриптом (он не чистится), потом временная папка
+_LOCAL_JAR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vnu.jar")
+VNU_JAR = os.environ.get("VNU_JAR") or (
+    _LOCAL_JAR if os.path.exists(_LOCAL_JAR)
+    else os.path.expandvars(r"%LOCALAPPDATA%\hermes\cache\scratch\vnu.jar"))
 
 
 def fetch(url):

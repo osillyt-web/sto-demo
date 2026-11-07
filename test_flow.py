@@ -267,7 +267,13 @@ check("календар показує зайняті години",
 
 status, body, _ = get("/cases")
 check("сторінка портфоліо відкривається", status == 200 and "Портфоліо" in body, status)
-check("у портфоліо три кейси", body.count('class="case"') == 3, body.count('class="case"'))
+check("у портфоліо два кейси для автобізнесу", body.count('class="case"') == 2, body.count('class="case"'))
+check("портфоліо: заголовок про СТО й запис", "Сайти для СТО та детейлінгу" in body)
+check("портфоліо: кейс VoiceReader прибрано з великих", 'id="case-voice"' not in body)
+check("портфоліо: блок «Інші роботи» на місці", 'id="other"' in body and "Інші роботи" in body)
+check("портфоліо: VoiceReader згадано як застосунок поза Google Play",
+      "VoiceReader" in body and "верифікації" in body)
+check("портфоліо: підпис кейсу ГСМ — автопарк і СТО", "автопарк і СТО" in body)
 check("у портфоліо немає плейсхолдерів", "{{" not in body)
 status, body, _ = get("/sitemap.xml")
 check("sitemap містить /cases", "/cases" in body)

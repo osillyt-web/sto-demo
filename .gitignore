@@ -20,3 +20,8 @@ tools/report.json
 # рабочие списки клиентов (телефоны) — не в публичный репозиторий
 data/prospects_*.csv
 data/prospects_*.json
+tools/vnu.jar
+tools/vnu_report.json
+tools/axe_report.json
+tunnel.log
+server.log
