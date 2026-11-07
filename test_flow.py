@@ -354,8 +354,9 @@ status, _, _ = get_soft("/brands/no-such-brand")
 check("невідома марка = 404", status == 404)
 
 _, sm, _ = get("/sitemap.xml")
-check("sitemap: 17 адрес, включно з послугами й марками",
-      sm.count("<loc>") == 17 and "/services/to" in sm and "/brands/skoda" in sm, sm.count("<loc>"))
+check("sitemap: 18 адрес, включно з послугами, марками й тарифами",
+      sm.count("<loc>") == 18 and "/services/to" in sm and "/brands/skoda" in sm
+      and "/pricing" in sm, sm.count("<loc>"))
 
 # ---------- напоминание о записи ----------
 _, days_raw, _ = get("/api/slots/days")
@@ -698,6 +699,19 @@ check("стилі: підкладка карти підключена до ifram
       "map-preview.png" in _css_map)
 check("стилі: карта має власний блок, а не декоративну сітку",
       ".map-card{" in _css_map and ".map-grid" not in _css_map)
+
+# ---------- страница тарифов ----------
+_st_pr, pr, _ = get("/pricing")
+check("тарифи: страница віддається", _st_pr == 200, _st_pr)
+check("тарифи: три тарифи на сторінці", pr.count('<article class="tier') == 3, pr.count('<article class="tier'))
+check("тарифи: ціни 7 900 / 19 900 / 24 900",
+      all(x in pr for x in ("7 900", "19 900", "24 900")))
+check("тарифи: середній тариф позначений як рекомендований", "Рекомендуємо" in pr)
+check("тарифи: у кожного тарифу є кнопка дії", pr.count("Обговорити") == 3, pr.count("Обговорити"))
+check("тарифи: без незамінених плейсхолдерів", "{{" not in pr)
+check("тарифи: є один main і заголовок h1", pr.count("<main") == 1 and "<h1>Тарифи</h1>" in pr)
+check("тарифи: сторінка є в карті сайту", "/pricing" in get("/sitemap.xml")[1])
+check("портфоліо: посилання на тарифи в меню", 'href="/pricing"' in get("/cases")[1])
 
 # ---------- кэш: публичное кэшируется с перепроверкой, приватное — нет ----------
 check("головна: Cache-Control дозволяє повернення назад (без no-store)",

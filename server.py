@@ -790,6 +790,18 @@ class Handler(BaseHTTPRequestHandler):
                     .replace("{{YEAR}}", str(datetime.date.today().year))
                     .replace("{{SITE_URL}}", SITE_URL))
             return self.send(200, page, cache="public, max-age=600")
+        if path == "/pricing":
+            conn = get_db()
+            try:
+                pc = contact_settings(conn)
+            finally:
+                conn.close()
+            page = (tpl("pricing.html")
+                    .replace("{{SITE_URL}}", SITE_URL)
+                    .replace("{{C_TELEGRAM}}", esc(pc["telegram"]))
+                    .replace("{{C_VIBER}}", esc(pc["viber"]))
+                    .replace("{{YEAR}}", str(datetime.date.today().year)))
+            return self.send(200, page, cache="public, max-age=600")
         if path == "/api/slots/days":
             conn = get_db()
             data = {"days": slots_overview(conn), "capacity": slot_capacity(conn)}
@@ -909,6 +921,8 @@ class Handler(BaseHTTPRequestHandler):
                     "<changefreq>yearly</changefreq><priority>0.3</priority></url>\n"
                     f"  <url><loc>{SITE_URL}/cases</loc><lastmod>{today}</lastmod>"
                     "<changefreq>monthly</changefreq><priority>0.6</priority></url>\n"
+                    f"  <url><loc>{SITE_URL}/pricing</loc><lastmod>{today}</lastmod>"
+                    "<changefreq>monthly</changefreq><priority>0.7</priority></url>\n"
                     + "".join(
                         f"  <url><loc>{SITE_URL}/services/{slug}</loc><lastmod>{today}</lastmod>"
                         "<changefreq>monthly</changefreq><priority>0.8</priority></url>\n"
