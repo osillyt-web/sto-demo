@@ -270,9 +270,8 @@ check("сторінка портфоліо відкривається", status =
 check("у портфоліо два кейси для автобізнесу", body.count('class="case"') == 2, body.count('class="case"'))
 check("портфоліо: заголовок про СТО й запис", "Сайти для СТО та детейлінгу" in body)
 check("портфоліо: кейс VoiceReader прибрано з великих", 'id="case-voice"' not in body)
-check("портфоліо: блок «Інші роботи» на місці", 'id="other"' in body and "Інші роботи" in body)
-check("портфоліо: VoiceReader згадано як застосунок поза Google Play",
-      "VoiceReader" in body and "верифікації" in body)
+check("портфоліо: блоку «Інші роботи» немає", 'id="other"' not in body and "Інші роботи" not in body)
+check("портфоліо: VoiceReader на сторінці не згадується", "VoiceReader" not in body)
 check("портфоліо: підпис кейсу ГСМ — автопарк і СТО", "автопарк і СТО" in body)
 check("у портфоліо немає плейсхолдерів", "{{" not in body)
 status, body, _ = get("/sitemap.xml")
