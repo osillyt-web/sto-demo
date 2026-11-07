@@ -724,6 +724,9 @@ check("тарифи: є порівняння з WordPress", 'id="vs-wp"' in pr a
 check("тарифи: у порівнянні п'ять рядків", pr.count('<th scope="row">') == 5, pr.count('<th scope="row">'))
 check("тарифи: джерело даних про уразливості вказано",
       "Patchstack" in pr and "Wordfence" in pr)
+_home = get("/")[1]
+check("головна: посилання на портфоліо в підвалі виділене",
+      'class="foot-link-accent" href="/cases"' in _home)
 check("тарифи: сторінка є в карті сайту", "/pricing" in get("/sitemap.xml")[1])
 check("портфоліо: посилання на тарифи в меню", 'href="/pricing"' in get("/cases")[1])
 

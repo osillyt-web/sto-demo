@@ -426,6 +426,9 @@ textarea{resize:vertical}
 .foot-inner > div{display:grid;gap:8px;font-size:14px;color:var(--muted);align-content:start}
 .foot-inner > div > b{color:var(--text);font-size:13px;text-transform:uppercase;letter-spacing:.08em}
 .foot-inner a:hover{color:var(--accent)}
+/* Портфоліо виділене постійно: це вхід у наші роботи, а не пункт послуг СТО */
+.foot-inner a.foot-link-accent{color:var(--accent);font-weight:600}
+.foot-inner a.foot-link-accent:hover{text-decoration:underline}
 .foot-bottom{display:flex;justify-content:space-between;gap:16px;font-size:12.5px;color:var(--muted);
   border-top:1px solid var(--line);margin-top:32px;padding-top:18px}
 
