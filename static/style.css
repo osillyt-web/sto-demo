@@ -127,7 +127,10 @@ p{margin:0 0 12px}
 .strip-item span{color:var(--muted);font-size:13px}
 
 /* ---------- секции ---------- */
-.section{padding:76px 0;border-bottom:1px solid var(--line);position:relative;scroll-margin-top:var(--top-h)}
+.section{padding:76px 0;border-bottom:1px solid var(--line);position:relative}
+/* цілі якорів не повинні заїжджати під липку шапку: .section на головній,
+   .case і .cases-cta на сторінці портфоліо, .foot — підвал */
+.section,.case,.cases-cta,.foot{scroll-margin-top:var(--top-h)}
 .section-alt{background:var(--bg-2)}
 .sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:30px}
 .sub{color:var(--muted);max-width:66ch;margin:0}
