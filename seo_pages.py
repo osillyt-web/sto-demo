@@ -130,7 +130,7 @@ def build_service_page(conn, slug):
       </div>
     </div>
     <figure class="svc-photo">
-      <img src="/static/img/%s.webp" width="560" height="420"
+      <img src="/static/img/%s-sm.webp" width="760" height="570"
            alt="%s — майстерня АвтоТочка" loading="lazy">
     </figure>
   </div>
@@ -237,7 +237,7 @@ def build_brand_page(conn, slug):
       </div>
     </div>
     <figure class="svc-photo">
-      <img src="/static/img/%s.webp" width="560" height="420"
+      <img src="/static/img/%s-sm.webp" width="760" height="570"
            alt="%s у сервісі АвтоТочка" loading="lazy">
     </figure>
   </div>

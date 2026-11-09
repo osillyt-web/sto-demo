@@ -298,6 +298,19 @@ for _path in ("/", "/cases"):
                       if a in _ids and a != "top" and not (_ids[a] & _offset_classes))
     check("%s: у цілей якорів є відступ під шапку" % _path, not _no_rule, _no_rule)
 
+# --- у каждой услуги своя картинка: две услуги с одним фото выглядят как ошибка ---
+_svc_photos = {}
+for _slug in ("diahnostyka", "to", "shynomontazh", "kuzovnyi", "poliruvannia", "khimchystka"):
+    _st, _h, _ = get("/services/" + _slug)
+    _mm = re.search(r'<img src="(/static/img/[^"]+)"', _h)
+    _svc_photos[_slug] = _mm.group(1) if _mm else None
+_repeats = {v: [k for k, x in _svc_photos.items() if x == v]
+            for v in set(_svc_photos.values()) if list(_svc_photos.values()).count(v) > 1}
+check("у кожного сервісу своя картинка", not _repeats, _repeats or "повторів немає")
+check("усі сервісні сторінки мають картинку", all(_svc_photos.values()), _svc_photos)
+check("сервісні сторінки віддають зменшені картинки (-sm)",
+      all(v and v.endswith("-sm.webp") for v in _svc_photos.values()), _svc_photos)
+
 status, body, _ = get("/cases")
 check("сторінка портфоліо відкривається", status == 200 and "Портфоліо" in body, status)
 check("у портфоліо два кейси для автобізнесу", body.count('class="case"') == 2, body.count('class="case"'))
