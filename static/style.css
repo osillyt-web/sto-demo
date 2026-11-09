@@ -15,6 +15,7 @@
   --r:16px;
   --max:1200px;
   --shadow:0 20px 50px rgba(0,0,0,.45);
+  --top-h:75px; /* висота липкої шапки: 74px + 1px рамка */
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -57,7 +58,7 @@ p{margin:0 0 12px}
 .btn-wide{width:100%}
 
 /* ---------- шапка ---------- */
-.top{position:sticky;top:0;z-index:50;background:rgba(10,12,16,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:0;scroll-margin-top:0;z-index:50;background:rgba(10,12,16,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .top-inner{display:flex;align-items:center;gap:26px;height:74px}
 .brand{display:flex;align-items:center;gap:11px;flex:none}
 .brand-mark{
@@ -126,7 +127,7 @@ p{margin:0 0 12px}
 .strip-item span{color:var(--muted);font-size:13px}
 
 /* ---------- секции ---------- */
-.section{padding:76px 0;border-bottom:1px solid var(--line);position:relative}
+.section{padding:76px 0;border-bottom:1px solid var(--line);position:relative;scroll-margin-top:var(--top-h)}
 .section-alt{background:var(--bg-2)}
 .sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:30px}
 .sub{color:var(--muted);max-width:66ch;margin:0}
@@ -579,6 +580,7 @@ textarea{resize:vertical}
 
 /* ================= адаптив: шапка до 900px ================= */
 @media (max-width:900px){
+  :root{--top-h:65px}
   .top-inner{height:64px;gap:14px}
   .nav,.phone{display:none}
   .burger{display:flex}

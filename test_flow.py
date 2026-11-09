@@ -257,10 +257,12 @@ if free_slot:
     check("у заявці збережено джерело з UTM",
           any(l["utm_source"] == "google" and l["utm_campaign"] == "selftest" for l in saved))
 
-status, body, _ = get("/api/admin/calendar?days=7", cookie)
+# окно 14 дней, а не 7: тестовая заявка ставится в последний свободный день
+# из выдачи /api/slots, а он в ночное время выходит за семидневное окно
+status, body, _ = get("/api/admin/calendar?days=14", cookie)
 cal = json.loads(body) if status == 200 else {}
-check("календар завантаження: 7 днів і сітка годин",
-      status == 200 and len(cal.get("grid", [])) == 7 and len(cal.get("times", [])) >= 8)
+check("календар завантаження: 14 днів і сітка годин",
+      status == 200 and len(cal.get("grid", [])) == 14 and len(cal.get("times", [])) >= 8)
 check("календар показує зайняті години",
       any(s["booked"] > 0 for d in cal.get("grid", []) for s in d["slots"]) or not slot_leads,
       sum(s["booked"] for d in cal.get("grid", []) for s in d["slots"]))
