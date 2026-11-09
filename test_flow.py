@@ -321,17 +321,19 @@ _repeats_b = {v: [k for k, x in _brand_photos.items() if x == v]
 check("у кожної марки своя картинка", not _repeats_b, _repeats_b or "повторів немає")
 check("усі сторінки марок мають картинку", all(_brand_photos.values()), _brand_photos)
 
-# --- сравнение «до/після» нельзя показывать, если обе картинки одинаковые ---
+# --- блок «до/після»: ліва половина чорно-біла, права кольорова ---
 _st, _home, _ = get("/")
-_bad_pairs = []
-for _b in re.findall(r'<figure class="ba-block">(.*?)</figure>', _home, re.S):
-    _after = re.search(r'class="ba-img"[^>]*src="([^"]+)"', _b)
-    _before = re.search(r'ba-before"><img[^>]*src="([^"]+)"', _b)
-    if _before and _after and _before.group(1) == _after.group(1):
-        _bad_pairs.append(_after.group(1))
-check("порівняння «до/після» не показує ту саму картинку з двох боків", not _bad_pairs,
-      _bad_pairs or "таких блоків немає")
-check("на головній немає обіцянки «До і після» без справжньої пари фото", "До і після" not in _home)
+_blocks = re.findall(r'<figure class="ba-block">(.*?)</figure>', _home, re.S)
+check("на головній є блок «До і після»", "До і після" in _home and len(_blocks) == 2, len(_blocks))
+check("у кожному порівнянні свій повзунок і шар «до»",
+      all('class="ba-handle"' in _b and 'class="ba-before"' in _b for _b in _blocks))
+check("шар «до» — те саме фото, показане чорно-білим",
+      all(re.search(r'ba-img--before', _b) for _b in _blocks))
+_css = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "style.css"),
+            encoding="utf-8").read()
+_ms = re.search(r'\.ba-img--before\{([^}]*)\}', _css)
+check("чорно-біле показує сама сторінка стилів (grayscale без часткових відтінків)",
+      bool(_ms) and "grayscale(1)" in _ms.group(1).replace(" ", ""), _ms.group(1) if _ms else "правило не знайдено")
 
 status, body, _ = get("/cases")
 check("сторінка портфоліо відкривається", status == 200 and "Портфоліо" in body, status)
