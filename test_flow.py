@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Функциональный прогон: сайт, калькулятор, форма, админка, экспорт. Печатает PASS/FAIL."""
-import json, os, sys, urllib.request, urllib.parse, urllib.error
+import json, os, re, sys, urllib.request, urllib.parse, urllib.error
 
 # Пароль админки: по умолчанию демонстрационный, но после смены пароля владельцем
 # тесты запускаются так:  ADMIN_PASSWORD='свій пароль' python test_flow.py
@@ -266,6 +266,37 @@ check("календар завантаження: 14 днів і сітка го
 check("календар показує зайняті години",
       any(s["booked"] > 0 for d in cal.get("grid", []) for s in d["slots"]) or not slot_leads,
       sum(s["booked"] for d in cal.get("grid", []) for s in d["slots"]))
+
+# --- якорі: у кожної цілі є id, і ціль має відступ під липку шапку ---
+# Перевіряємо саме розмітку й стилі: чи не забули новий блок додати до правила
+# scroll-margin-top. Положення на екрані перевіряє окремо tools/anchor_check.py
+status, css_body, _ = get("/static/style.css")
+# комментарии убираем: иначе в разбор селектора попадает текст пояснения
+css_clean = re.sub(r"/\*.*?\*/", "", css_body, flags=re.S)
+check("CSS: висота шапки задана для ПК", "--top-h:75px" in css_clean)
+check("CSS: висота шапки задана для вузьких екранів", "--top-h:65px" in css_clean)
+_m = re.search(r"([^{}]+)\{scroll-margin-top:var\(--top-h\)\}", css_clean)
+check("CSS: правило відступу для цілей якорів на місці", bool(_m), _m.group(1).strip() if _m else "правила нет")
+_offset_classes = set()
+if _m:
+    _offset_classes = {c.strip().lstrip(".") for c in _m.group(1).split(",") if c.strip()}
+
+for _path in ("/", "/cases"):
+    _, _html, _ = get(_path)
+    _ids = {}
+    for _tag in re.finditer(r"<(\w+)([^>]*?)>", _html):
+        _attrs = _tag.group(2)
+        _mid = re.search(r'\bid="([^"]+)"', _attrs)
+        if _mid:
+            _mc = re.search(r'\bclass="([^"]*)"', _attrs)
+            _ids[_mid.group(1)] = set((_mc.group(1) if _mc else "").split())
+    _anchors = {a for a in re.findall(r'href="#([^"]+)"', _html)}
+    _missing = sorted(a for a in _anchors if a not in _ids)
+    check("%s: у кожного якоря є ціль" % _path, not _missing, _missing)
+    # #top — сама шапка, їй відступ не потрібен
+    _no_rule = sorted(a for a in _anchors
+                      if a in _ids and a != "top" and not (_ids[a] & _offset_classes))
+    check("%s: у цілей якорів є відступ під шапку" % _path, not _no_rule, _no_rule)
 
 status, body, _ = get("/cases")
 check("сторінка портфоліо відкривається", status == 200 and "Портфоліо" in body, status)
