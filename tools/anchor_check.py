@@ -50,6 +50,28 @@ def main():
             ctx = browser.new_context(viewport={"width": w, "height": h},
                                       is_mobile=w < 500, has_touch=w < 500)
             page = ctx.new_page()
+
+            # вкладки портфолио должны быть видны на любой ширине: они показывают,
+            # что кейсов два, и без них с телефона между кейсами не перейти
+            page.goto(BASE + "/cases", wait_until="load", timeout=60000)
+            page.wait_for_timeout(350)
+            tabs = page.evaluate("""() => {
+                const n = document.querySelector(".nav");
+                if (!n) return null;
+                const links = [...n.querySelectorAll("a")];
+                return {total: links.length,
+                        visible: links.filter(a => a.offsetParent !== null).length,
+                        minHeight: Math.round(Math.min(...links.map(a => a.getBoundingClientRect().height)))};
+            }""")
+            checks += 1
+            if not tabs or tabs["visible"] != tabs["total"]:
+                print("FAIL %-13s /cases  вкладки портфолио скрыты (%s из %s)"
+                      % (label, tabs["visible"] if tabs else "?", tabs["total"] if tabs else "?"))
+                fails.append("%s вкладки портфолио" % label)
+            else:
+                print("PASS %-13s /cases  вкладки портфолио видны: %d, высота %d px"
+                      % (label, tabs["visible"], tabs["minHeight"]))
+
             for path, anchors in PAGES.items():
                 for a in anchors:
                     page.goto(BASE + path, wait_until="load", timeout=60000)

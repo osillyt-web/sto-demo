@@ -589,6 +589,23 @@ textarea{resize:vertical}
   .burger{display:flex}
   .brand-text small{display:none}
 }
+
+/* Портфоліо на вузьких екранах: вкладки «Сайт СТО / Бот обліку / Тарифи» не
+   ховаємо — вони показують, що кейсів два. Викладаємо їх другим рядком
+   шапки, з прокруткою пальцем, якщо не влізуть. Бургера тут немає. */
+@media (max-width:900px){
+  .cases-page{--top-h:109px}                 /* шапка стає у два рядки: 64 + 44 + 1 */
+  .cases-page .top-inner{height:auto;flex-wrap:wrap;row-gap:0;padding:0}
+  .cases-page .brand,.cases-page .top-actions{height:64px}
+  .cases-page .top-actions{margin-left:auto}
+  .cases-page .nav{
+    display:flex;order:3;flex:1 0 100%;margin:0;gap:22px;
+    overflow-x:auto;padding:0;font-size:14.5px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .cases-page .nav::-webkit-scrollbar{display:none}
+  /* палець має влучати: висота посилання не менше 44 px */
+  .cases-page .nav a{flex:none;display:flex;align-items:center;min-height:44px}
+}
 @media (max-width:640px){
   .slot-pick{padding:14px}
   .msgr{grid-template-columns:1fr}
