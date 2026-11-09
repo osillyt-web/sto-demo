@@ -215,7 +215,7 @@ BRANDS = {
         "title": "Toyota",
         "models": ["Corolla", "Camry", "RAV4", "Auris", "Land Cruiser", "Prius"],
         "note": "Працюємо з гібридами: обслуговування батареї, перевірка інвертора, заміна рідин.",
-        "photo": "engine",
+        "photo": "master",
     },
     "skoda": {
         "title": "Skoda",
@@ -233,7 +233,7 @@ BRANDS = {
         "title": "Renault",
         "models": ["Megane", "Logan", "Duster", "Sandero", "Kaptur", "Arkana"],
         "note": "Обслуговування бюджетних моделей без «перепродажу» зайвих робіт — частий запит.",
-        "photo": "tires",
+        "photo": "interior",
     },
     "nissan": {
         "title": "Nissan",

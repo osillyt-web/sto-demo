@@ -311,6 +311,28 @@ check("усі сервісні сторінки мають картинку", al
 check("сервісні сторінки віддають зменшені картинки (-sm)",
       all(v and v.endswith("-sm.webp") for v in _svc_photos.values()), _svc_photos)
 
+_brand_photos = {}
+for _slug in ("volkswagen", "toyota", "skoda", "bmw", "renault", "nissan"):
+    _st, _h, _ = get("/brands/" + _slug)
+    _mm = re.search(r'<img src="(/static/img/[^"]+)"', _h)
+    _brand_photos[_slug] = _mm.group(1) if _mm else None
+_repeats_b = {v: [k for k, x in _brand_photos.items() if x == v]
+              for v in set(_brand_photos.values()) if list(_brand_photos.values()).count(v) > 1}
+check("у кожної марки своя картинка", not _repeats_b, _repeats_b or "повторів немає")
+check("усі сторінки марок мають картинку", all(_brand_photos.values()), _brand_photos)
+
+# --- сравнение «до/після» нельзя показывать, если обе картинки одинаковые ---
+_st, _home, _ = get("/")
+_bad_pairs = []
+for _b in re.findall(r'<figure class="ba-block">(.*?)</figure>', _home, re.S):
+    _after = re.search(r'class="ba-img"[^>]*src="([^"]+)"', _b)
+    _before = re.search(r'ba-before"><img[^>]*src="([^"]+)"', _b)
+    if _before and _after and _before.group(1) == _after.group(1):
+        _bad_pairs.append(_after.group(1))
+check("порівняння «до/після» не показує ту саму картинку з двох боків", not _bad_pairs,
+      _bad_pairs or "таких блоків немає")
+check("на головній немає обіцянки «До і після» без справжньої пари фото", "До і після" not in _home)
+
 status, body, _ = get("/cases")
 check("сторінка портфоліо відкривається", status == 200 and "Портфоліо" in body, status)
 check("у портфоліо два кейси для автобізнесу", body.count('class="case"') == 2, body.count('class="case"'))
