@@ -344,6 +344,22 @@ check("портфоліо: блоку «Інші роботи» немає", 'id
 check("портфоліо: VoiceReader на сторінці не згадується", "VoiceReader" not in body)
 check("портфоліо: підпис кейсу ГСМ — автопарк і СТО", "автопарк і СТО" in body)
 check("у портфоліо немає плейсхолдерів", "{{" not in body)
+
+# --- пропозиція та живий контакт у портфоліо ---
+check("портфоліо: є блок пропозиції", 'id="offer"' in body)
+check("портфоліо: у пропозиції є ціна і строк", "19 900" in body and "7–10" in body)
+check("портфоліо: обіцяно показати головну до оплати", "До оплати покажу" in body)
+check("портфоліо: кнопки ведуть у Telegram, а не на форму запису в автосервіс",
+      "t.me/" in body and "/#book" not in body)
+check("портфоліо: є блок «8 пунктів» як стандарт якості",
+      'id="standard"' in body and "8 пунктами" in body)
+check("портфоліо: сказано про роботу текстом, без дзвінків", "дзвінки не потрібні" in body)
+_imgs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "img")
+check("карта-прев'ю віддається webp і важить менше 150 КБ",
+      os.path.exists(os.path.join(_imgs, "map-preview.webp"))
+      and os.path.getsize(os.path.join(_imgs, "map-preview.webp")) < 150 * 1024,
+      round(os.path.getsize(os.path.join(_imgs, "map-preview.webp")) / 1024) if os.path.exists(os.path.join(_imgs, "map-preview.webp")) else "файла нет")
+check("старий PNG-файл карти видалено", not os.path.exists(os.path.join(_imgs, "map-preview.png")))
 status, body, _ = get("/sitemap.xml")
 check("sitemap містить /cases", "/cases" in body)
 
@@ -764,14 +780,14 @@ check("CSP дозволяє вбудовувати карту Google", "frame-sr
 _css_map = get("/static/style.css")[1]
 # картинка двоичная — читаем только код ответа и размер, без декодирования в текст
 _ic = _http.HTTPConnection("127.0.0.1", 8000, timeout=10)
-_ic.request("GET", "/static/img/map-preview.png")
+_ic.request("GET", "/static/img/map-preview.webp")
 _ir = _ic.getresponse()
 _st_img, _len_img = _ir.status, len(_ir.read())
 _ic.close()
 check("карта: є справжня підкладка-картинка місцевості (не сірий прямокутник)",
       _st_img == 200 and _len_img > 20000, f"{_st_img}, {_len_img} байт")
 check("стилі: підкладка карти підключена до iframe",
-      "map-preview.png" in _css_map)
+      "map-preview.webp" in _css_map)
 check("стилі: карта має власний блок, а не декоративну сітку",
       ".map-card{" in _css_map and ".map-grid" not in _css_map)
 

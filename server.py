@@ -786,9 +786,16 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/":
             return self.render_index()
         if path == "/cases":
+            conn = get_db()
+            try:
+                pc = contact_settings(conn)
+            finally:
+                conn.close()
             page = (tpl("cases.html")
                     .replace("{{YEAR}}", str(datetime.date.today().year))
-                    .replace("{{SITE_URL}}", SITE_URL))
+                    .replace("{{SITE_URL}}", SITE_URL)
+                    .replace("{{C_TELEGRAM}}", esc(pc["telegram"]))
+                    .replace("{{C_VIBER}}", esc(pc["viber"])))
             return self.send(200, page, cache="public, max-age=600")
         if path == "/pricing":
             conn = get_db()

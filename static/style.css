@@ -471,7 +471,7 @@ textarea{resize:vertical}
 /* показываем настоящую карту города, пока грузится интерактивная: человек
    никогда не должен видеть пустой серый прямоугольник */
 .map-frame{display:block;width:100%;height:230px;border:0;filter:saturate(.85);
-  background:#e8e4dd url('/static/img/map-preview.png') center/cover no-repeat}
+  background:#e8e4dd url('/static/img/map-preview.webp') center/cover no-repeat}
 .map-info{display:grid;gap:2px;padding:12px 14px;border-top:1px solid var(--line)}
 .map-info b{font-size:14.5px;color:var(--text)}
 .map-info small{font-size:12.5px;color:var(--muted)}
@@ -849,6 +849,13 @@ textarea{resize:vertical}
 .check{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:14.5px;line-height:1.45}
 .check li{position:relative;padding-left:24px}
 .check li::before{content:"✓";position:absolute;left:0;top:0;color:var(--accent);font-weight:700}
+/* пропозиція в портфоліо: умови, зняття ризику, список у дві колонки */
+.offer-terms{margin:20px 0 0;font-size:16px;line-height:1.6}
+.offer-terms b{color:var(--accent-2)}
+.offer-risk{margin:12px 0 0;font-size:15px;line-height:1.6;color:var(--muted)}
+.offer-risk b{color:var(--text)}
+.check-cols{grid-template-columns:1fr 1fr;gap:9px 22px;margin-top:18px}
+@media (max-width:700px){.check-cols{grid-template-columns:1fr}}
 .compare .table-wrap{margin:6px 0 12px}
 .compare table{border-collapse:collapse;width:100%;font-size:14.5px}
 .compare th,.compare td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
