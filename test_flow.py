@@ -807,7 +807,9 @@ check("тарифи: перелічено, що клієнт змінює сам
 check("тарифи: перелічено, що робить виконавець",
       "Я — у межах підтримки" in pr and "Нові сторінки й тексти" in pr)
 check("тарифи: є порівняння з WordPress", 'id="vs-wp"' in pr and "Плагіни" in pr)
-check("тарифи: у порівнянні п'ять рядків", pr.count('<th scope="row">') == 5, pr.count('<th scope="row">'))
+_cmp = pr[pr.find('id="vs-wp"'):pr.find("patchstack-цитата" if "patchstack-цитата" in pr else "</section>", pr.find('id="vs-wp"'))]
+check("тарифи: у порівнянні з WordPress п'ять рядків",
+      _cmp.count('<th scope="row">') == 5, _cmp.count('<th scope="row">'))
 check("тарифи: джерело даних про уразливості вказано",
       "Patchstack" in pr and "Wordfence" in pr)
 _home = get("/")[1]
@@ -826,6 +828,44 @@ check("вхід в адмінку: Cache-Control no-store", "no-store" in (_h.ge
 _, _hh2, _h2 = get("/api/slots/days")
 check("публічне API слотів: без no-store",
       "no-store" not in (_h2.get("Cache-Control") or ""))
+
+# ---------- правки по аудиту 10.11.2026: демо-пометки, оффер с главной, вопрос без записи ----------
+_, _h, _ = get("/")
+check("главная: пометка «це демонстраційний сайт» на первом экране",
+      'class="demo-note"' in _h and "демонстраційний сайт" in _h)
+check("главная: из пометки ссылка на предложение /cases#offer", 'href="/cases#offer"' in _h)
+check("главная: ссылка на предложение есть и в мобильном меню", _h.count("/cases#offer") >= 2,
+      _h.count("/cases#offer"))
+check("главная: пометка у блока отзывов", "Відгуки, імена й оцінки — демонстраційні" in _h)
+check("главная: пометка у контактов", "Адреса, телефон і пошта — вигадані" in _h)
+check("форма: переключатель «записатися / тільки дізнатися ціну»",
+      'name="mode"' in _h and 'value="ask"' in _h and 'value="book" checked' in _h)
+_, _post_body, _ = post("/api/leads", {"name": "Олег Тестовий", "phone": "+380 67 000 11 22",
+                                       "comment": "Питання без запису", "consent": "1", "mode": "ask"})
+try:
+    _pq = json.loads(_post_body)
+except Exception:
+    _pq = {}
+check("форма: заявка без слота принимается (режим «питання»)", _pq.get("ok") is True, _post_body[:80])
+
+check("форма обратного звонка: заголовок связан с полем (label for)",
+      'for="callback-phone"' in _h and 'id="callback-phone"' in _h and 'required' in _h)
+check("форма обратного звонка: сказано, зачем номер и что это согласие",
+      "callback-hint" in _h and "погоджуєтесь" in _h)
+
+_, _ch, _ = get("/cases")
+check("кейсы: пометка «демонстраційний кейс» у метрик", "case-note--demo" in _ch)
+check("кейсы: в предложении сказано, что услуги и цены владелец правит сам",
+      "Послуги, ціни й тексти правите самі в панелі" in _ch)
+_, _ph, _ = get("/pricing")
+check("тарифы: блок «Що після першого року»", "Що після першого року" in _ph and 'id="after-year"' in _ph)
+check("тарифы: расписаны домен и хостинг после первого года",
+      "Домен .com.ua" in _ph and "Хостинг" in _ph and "560–740" in _ph)
+check("тарифы: строка про 0 грн уточнена", "хостинг і підтримка в пакеті" in _ph)
+_, _vh, _ = get("/privacy")
+check("политика: помечена как демонстрационный документ", "legal-demo" in _vh)
+check("политика: нет утверждения об HTTPS без оговорки",
+      "З'єднання з сайтом захищене протоколом HTTPS." not in _vh)
 
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 # удаляем все заявки тестового клиента: если прошлый прогон упал, за ним остались «хвосты»

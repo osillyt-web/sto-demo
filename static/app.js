@@ -370,6 +370,24 @@
     const phone = form.querySelector('input[name="phone"]');
     phone?.addEventListener("input", () => maskPhone(phone));
 
+    // режим заявки: «записатися» требует слот, «тільки дізнатися ціну» — нет
+    const modeRadios = form.querySelectorAll('input[name="mode"]');
+    const askMode = () => form.querySelector('input[name="mode"]:checked')?.value === "ask";
+    function applyMode() {
+      const ask = askMode();
+      form.classList.toggle("mode-ask", ask);
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.textContent = ask ? "Надіслати питання" : "Записатись";
+      if (ask) {
+        ["#slot-date", "#slot-time"].forEach(sel => {
+          const el = form.querySelector(sel);
+          if (el) el.value = "";
+        });
+      }
+    }
+    modeRadios.forEach(r => r.addEventListener("change", applyMode));
+    applyMode();
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       msg.className = "form-msg";
@@ -397,7 +415,7 @@
         }
       }
 
-      if (slotUI && (!slotUI.date || !slotUI.time)) {
+      if (!askMode() && slotUI && (!slotUI.date || !slotUI.time)) {
         msg.textContent = "Оберіть день і час — інакше не забронюємо місце";
         msg.classList.add("err");
         document.getElementById("days")?.scrollIntoView({ block: "center" });
@@ -415,10 +433,13 @@
         const res = await fetch("/api/leads", { method: "POST", body: new URLSearchParams(payload) });
         const data = await res.json();
         if (data.ok) {
-          msg.textContent = "Дякуємо! Заявку прийнято — передзвонимо протягом 15 хвилин.";
+          msg.textContent = askMode()
+            ? "Дякуємо! Питання прийнято — відповімо в робочий час."
+            : "Дякуємо! Заявку прийнято — передзвонимо протягом 15 хвилин.";
           window.hit && window.hit("lead_sent");
           msg.classList.add("ok");
           form.reset();
+          applyMode();
           if (estimateField) estimateField.value = "";
           const estLine1 = $("#est-line");
           if (estLine1) estLine1.hidden = true;

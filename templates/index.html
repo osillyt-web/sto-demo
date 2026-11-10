@@ -66,6 +66,7 @@
     <a href="#prices">Ціни</a>
     <a href="#reviews">Відгуки</a>
     <a href="#contacts">Контакти</a>
+    <a href="/cases#offer">Сайт для вашого СТО</a>
     <a href="/cases">Портфоліо</a>
     <a class="btn btn-accent" href="#book">Записатись</a>
     <div class="menu-msgr">
@@ -94,6 +95,9 @@
         <a class="btn btn-accent btn-lg" href="#book">Записатись на сервіс</a>
         <a class="btn btn-ghost btn-lg" href="#calc">Розрахувати ціну</a>
       </div>
+      <p class="demo-note"><span class="demo-dot" aria-hidden="true">i</span>
+        Це демонстраційний сайт: назва, цифри, відгуки, адреса й телефон вигадані.
+        <a href="/cases#offer">Хочете такий сайт для свого СТО? →</a></p>
       <ul class="facts">
         <li><b>12</b><span>років на ринку</span></li>
         <li><b>4.9</b><span>рейтинг Google</span></li>
@@ -270,7 +274,9 @@
 <section id="reviews" class="section section-alt">
   <div class="wrap">
     <div class="sec-head"><div><h2>Відгуки клієнтів</h2>
-      <p class="sub">{{C_REVIEWS_NOTE}} · <a class="link-more" href="{{C_REVIEWS_URL}}" target="_blank" rel="noopener">Читати в Google →</a></p></div></div>
+      <p class="sub">{{C_REVIEWS_NOTE}} · <a class="link-more" href="{{C_REVIEWS_URL}}" target="_blank" rel="noopener">Читати в Google →</a></p>
+        <p class="demo-note demo-note--tight">Відгуки, імена й оцінки — демонстраційні: показують,
+          як виглядатиме цей блок на сайті СТО.</p></div></div>
     <div class="reviews">
       {{REVIEWS}}
     </div>
@@ -325,8 +331,14 @@
   <div class="wrap two-col book-wrap">
     <div>
       <h2>Записатись на сервіс</h2>
-      <p class="sub">Заповніть форму — передзвонимо протягом 15 хвилин у робочий час і підтвердимо час.</p>
+      <p class="sub">Заповніть форму — передзвонимо протягом 15 хвилин у робочий час і підтвердимо час.
+        Якщо час ще не обрали, позначте «Тільки дізнатися ціну» — відповімо без запису.</p>
       <form id="lead-form" class="lead-form" novalidate>
+        <fieldset class="lead-mode">
+          <legend class="sr-only">Що вам потрібно</legend>
+          <label><input type="radio" name="mode" value="book" checked><span>Записатися</span></label>
+          <label><input type="radio" name="mode" value="ask"><span>Тільки дізнатися ціну</span></label>
+        </fieldset>
         <div class="field-row">
           <label>Ім'я <span class="req">*</span>
             <input type="text" name="name" placeholder="Олександр" autocomplete="name" required>
@@ -392,11 +404,13 @@
           WhatsApp</a>
       </div>
       <form class="callback" id="callback-form">
-        <p class="callback-title">Передзвонити за 30 секунд</p>
+        <label class="callback-title" for="callback-phone">Передзвонити за 30 секунд</label>
         <div class="callback-row">
-          <input type="tel" name="phone" placeholder="+380 __ ___ __ __" inputmode="tel" autocomplete="tel" aria-label="Телефон для зворотного дзвінка">
+          <input type="tel" id="callback-phone" name="phone" placeholder="+380 __ ___ __ __" inputmode="tel" autocomplete="tel" required>
           <button class="btn btn-accent" type="submit">Передзвоніть</button>
         </div>
+          <p class="callback-hint">Номер потрібен лише для зворотного дзвінка. Надсилаючи його, ви погоджуєтесь
+            з <a href="/privacy" target="_blank" rel="noopener">політикою конфіденційності</a>.</p>
         <p class="callback-msg" id="callback-msg" role="status" aria-live="polite"></p>
       </form>
       <div class="map-card">
@@ -426,6 +440,7 @@
       </a>
       <p class="mini">{{C_ADDRESS}} · {{C_HOURS}}<br>
         <a href="tel:{{C_PHONE_RAW}}">{{C_PHONE}}</a></p>
+      <p class="demo-note demo-note--tight">Адреса, телефон і пошта — вигадані для демонстрації.</p>
     </div>
     <div>
       <b>Послуги</b>
