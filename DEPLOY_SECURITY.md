@@ -31,7 +31,7 @@
 Правильная раскладка — **в корне сайта только то, что можно показывать**:
 
 ```
-/srv/autotochka/
+/srv/avtokrapka/
 ├── public/            ← КОРЕНЬ САЙТА (document root)
 │   ├── static/        (css, js, картинки)
 │   ├── robots.txt
@@ -51,7 +51,7 @@
 ```nginx
 server {
     server_name example.com;
-    root /srv/autotochka/public;          # только публичное
+    root /srv/avtokrapka/public;          # только публичное
 
     # служебные и «мусорные» файлы — всегда 404
     location ~ /\.            { return 404; }   # .git, .env, .htpasswd

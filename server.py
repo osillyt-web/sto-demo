@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-АвтоТочка — сайт СТО/детейлинг + админ-панель (демо для портфолио).
+АвтоКрапка — сайт СТО/детейлинг + админ-панель (демо для портфолио).
 Без внешних зависимостей: только стандартная библиотека Python 3.10+.
 
 Запуск:  python server.py
@@ -142,7 +142,7 @@ CONTACT_DEFAULTS = {
     "phone_raw": "+380440000000",
     "address": "Київ, вул. Кирилівська, 41",
     "hours": "Пн–Сб, 9:00–19:00",
-    "telegram": "https://t.me/autotochka_demo",
+    "telegram": "https://t.me/avtokrapka_demo",
     "viber": "viber://chat?number=%2B380440000000",
     "whatsapp": "https://wa.me/380440000000",
     "reviews_url": "https://www.google.com/maps/search/?api=1&query=50.4715341,30.4985365",
@@ -532,7 +532,7 @@ def reminder_text(conn, lead):
     contacts = contact_settings(conn)
     name = (lead["name"] or "").split()[0] if lead["name"] else ""
     url = reminder_url(conn, lead["token"] or "")
-    return (f"{name + ', н' if name else 'Н'}агадуємо про запис в АвтоТочка: "
+    return (f"{name + ', н' if name else 'Н'}агадуємо про запис в АвтоКрапка: "
             f"{date_label} о {time_label}. {lead['service'] or ''}".replace("  ", " ").strip()
             + f". Адреса: {contacts['address']}. Якщо плани змінилися — підтвердьте або скасуйте тут: {url}")
 
@@ -594,7 +594,7 @@ def login_page(error=""):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AutoTochka/3.2"
+    server_version = "avtokrapka/3.2"
     # не сообщаем окружающим версию Python: точная версия облегчает подбор известных дыр
     sys_version = ""
 
@@ -1402,7 +1402,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_out({"ok": True})
 
         if path == "/admin/settings/test":
-            ok, info = send_telegram("🔔 Тестове повідомлення з адмінки «АвтоТочка». "
+            ok, info = send_telegram("🔔 Тестове повідомлення з адмінки «АвтоКрапка». "
                                      "Якщо ви це бачите — заявки будуть приходити сюди.")
             return self.json_out({"ok": ok, "info": info})
 
@@ -1510,7 +1510,7 @@ class Handler(BaseHTTPRequestHandler):
         photos = "\n".join(f"""<figure class="shot" data-reveal>
           <img src="/static/img/{name}-sm.webp" data-full="/static/img/{name}.webp"
                width="760" height="570" loading="lazy" decoding="async"
-               alt="{esc(cap)} — АвтоТочка, Київ">
+               alt="{esc(cap)} — АвтоКрапка, Київ">
           <figcaption><b>{esc(cap)}</b><span>{esc(sub)}</span></figcaption>
         </figure>""" for name, cap, sub in gallery)
 
@@ -1528,7 +1528,7 @@ class Handler(BaseHTTPRequestHandler):
         jsonld = {
             "@context": "https://schema.org",
             "@type": "AutoRepair",
-            "name": "АвтоТочка",
+            "name": "АвтоКрапка",
             "description": "СТО та детейлінг у Києві: ремонт, ТО, шиномонтаж, кузовний ремонт, полірування.",
             "url": SITE_URL,
             "telephone": "+380440000000",

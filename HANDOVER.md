@@ -53,7 +53,7 @@ sudo useradd -r -s /usr/sbin/nologin sto && sudo chown -R sto:sto /opt/sto
 
 ```ini
 [Unit]
-Description=AutoTochka site
+Description=avtokrapka site
 After=network.target
 
 [Service]

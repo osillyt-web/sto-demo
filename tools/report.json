@@ -63,7 +63,7 @@
   "engine": "chromium",
   "check": "слоты: есть свободные часы",
   "ok": true,
-  "detail": "3"
+  "detail": "7"
  },
  {
   "engine": "chromium",
@@ -81,7 +81,7 @@
   "engine": "chromium",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 487, h1 вес 800"
+  "detail": "правил 532, h1 вес 800"
  },
  {
   "engine": "chromium",
@@ -123,19 +123,19 @@
   "engine": "chromium",
   "check": "день выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': 'Сьогодні6.116 вільно', 'total': 12}"
+  "detail": "{'ok': True, 'text': 'Сьогодні10.1114 віль', 'total': 12}"
  },
  {
   "engine": "chromium",
   "check": "час выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': '16:002 місця', 'total': 3}"
+  "detail": "{'ok': True, 'text': '12:002 місця', 'total': 7}"
  },
  {
   "engine": "chromium",
   "check": "выбор попал в форму",
   "ok": true,
-  "detail": "{'date': '2026-11-06', 'time': '16:00'}"
+  "detail": "{'date': '2026-11-10', 'time': '12:00'}"
  },
  {
   "engine": "chromium",
@@ -213,7 +213,7 @@
   "engine": "firefox",
   "check": "слоты: есть свободные часы",
   "ok": true,
-  "detail": "3"
+  "detail": "7"
  },
  {
   "engine": "firefox",
@@ -231,7 +231,7 @@
   "engine": "firefox",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 487, h1 вес 800"
+  "detail": "правил 532, h1 вес 800"
  },
  {
   "engine": "firefox",
@@ -273,19 +273,19 @@
   "engine": "firefox",
   "check": "день выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': 'Сьогодні6.116 вільно', 'total': 12}"
+  "detail": "{'ok': True, 'text': 'Сьогодні10.1114 віль', 'total': 12}"
  },
  {
   "engine": "firefox",
   "check": "час выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': '16:002 місця', 'total': 3}"
+  "detail": "{'ok': True, 'text': '12:002 місця', 'total': 7}"
  },
  {
   "engine": "firefox",
   "check": "выбор попал в форму",
   "ok": true,
-  "detail": "{'date': '2026-11-06', 'time': '16:00'}"
+  "detail": "{'date': '2026-11-10', 'time': '12:00'}"
  },
  {
   "engine": "firefox",
@@ -363,7 +363,7 @@
   "engine": "webkit",
   "check": "слоты: есть свободные часы",
   "ok": true,
-  "detail": "3"
+  "detail": "7"
  },
  {
   "engine": "webkit",
@@ -381,7 +381,7 @@
   "engine": "webkit",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 487, h1 вес 800"
+  "detail": "правил 532, h1 вес 800"
  },
  {
   "engine": "webkit",
@@ -423,19 +423,19 @@
   "engine": "webkit",
   "check": "день выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': 'Сьогодні6.116 вільно', 'total': 12}"
+  "detail": "{'ok': True, 'text': 'Сьогодні10.1114 віль', 'total': 12}"
  },
  {
   "engine": "webkit",
   "check": "час выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': '16:002 місця', 'total': 3}"
+  "detail": "{'ok': True, 'text': '12:002 місця', 'total': 7}"
  },
  {
   "engine": "webkit",
   "check": "выбор попал в форму",
   "ok": true,
-  "detail": "{'date': '2026-11-06', 'time': '16:00'}"
+  "detail": "{'date': '2026-11-10', 'time': '12:00'}"
  },
  {
   "engine": "webkit",

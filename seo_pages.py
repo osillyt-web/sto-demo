@@ -89,7 +89,7 @@ def build_services_index(conn):
 </div></section>''' % (crumbs([("Головна", "/"), ("Послуги", None)]), "".join(cards), _phone_raw(conn))
 
     jsonld = {"@context": "https://schema.org", "@type": "CollectionPage",
-              "name": "Послуги СТО АвтоТочка", "url": _site + "/services"}
+              "name": "Послуги СТО АвтоКрапка", "url": _site + "/services"}
     return ("Послуги СТО у Києві — діагностика, ТО, шиномонтаж, кузовний ремонт, полірування, хімчистка",
             "Шість послуг автосервісу з цінами за класом авто: діагностика, технічне обслуговування, "
             "шиномонтаж, кузовний ремонт, полірування кузова, хімчистка салону. Онлайн-запис.",
@@ -131,7 +131,7 @@ def build_service_page(conn, slug):
     </div>
     <figure class="svc-photo">
       <img src="/static/img/%s-sm.webp" width="760" height="570"
-           alt="%s — майстерня АвтоТочка" loading="lazy">
+           alt="%s — майстерня АвтоКрапка" loading="lazy">
     </figure>
   </div>
 
@@ -173,7 +173,7 @@ def build_service_page(conn, slug):
         {"@context": "https://schema.org", "@type": "Service", "name": sv["title"],
          "description": sv["short"], "serviceType": sv["title"],
          "url": "%s/services/%s" % (_site, slug),
-         "provider": {"@type": "AutoRepair", "name": "АвтоТочка",
+         "provider": {"@type": "AutoRepair", "name": "АвтоКрапка",
                       "telephone": _contacts(conn)["phone_raw"]},
          "areaServed": {"@type": "City", "name": "Київ"},
          "offers": {"@type": "Offer", "priceCurrency": "UAH", "price": price_digits}},
@@ -187,7 +187,7 @@ def build_service_page(conn, slug):
          "mainEntity": [{"@type": "Question", "name": q,
                          "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in sv["faq"]]},
     ]
-    title = "%s у Києві — ціни, що входить, онлайн-запис | АвтоТочка" % sv["title"]
+    title = "%s у Києві — ціни, що входить, онлайн-запис | АвтоКрапка" % sv["title"]
     desc = "%s. %s. Ціна фіксується до початку робіт, гарантія 12 місяців. Запис онлайн на сайті." % (
         sv["short"], sv["duration"])
     return title, desc, "/services/" + slug, body, ld, sv["photo"]
@@ -209,7 +209,7 @@ def build_brands_index(conn):
   <div class="svc-grid">%s</div>
   <p class="mini">Немає вашої марки у списку? Зателефонуйте — у 9 з 10 випадків беремось.</p>
 </div></section>''' % (crumbs([("Головна", "/"), ("Марки", None)]), cards)
-    return ("Марки авто, з якими працюємо — ремонт і обслуговування у Києві | АвтоТочка",
+    return ("Марки авто, з якими працюємо — ремонт і обслуговування у Києві | АвтоКрапка",
             "Volkswagen, Toyota, Skoda, BMW, Renault, Nissan — обслуговування і ремонт у Києві. "
             "Онлайн-запис, фіксована ціна до робіт, гарантія 12 місяців.",
             "/brands", body,
@@ -238,7 +238,7 @@ def build_brand_page(conn, slug):
     </div>
     <figure class="svc-photo">
       <img src="/static/img/%s-sm.webp" width="760" height="570"
-           alt="%s у сервісі АвтоТочка" loading="lazy">
+           alt="%s у сервісі АвтоКрапка" loading="lazy">
     </figure>
   </div>
   <h2 class="h2">Що робимо з %s</h2>
@@ -255,7 +255,7 @@ def build_brand_page(conn, slug):
         {"@context": "https://schema.org", "@type": "Service",
          "name": "Ремонт %s у Києві" % b["title"], "description": b["note"],
          "serviceType": "Автосервіс", "url": "%s/brands/%s" % (_site, slug),
-         "provider": {"@type": "AutoRepair", "name": "АвтоТочка"},
+         "provider": {"@type": "AutoRepair", "name": "АвтоКрапка"},
          "areaServed": {"@type": "City", "name": "Київ"}},
         {"@context": "https://schema.org", "@type": "BreadcrumbList",
          "itemListElement": [
@@ -264,7 +264,7 @@ def build_brand_page(conn, slug):
              {"@type": "ListItem", "position": 3, "name": b["title"],
               "item": "%s/brands/%s" % (_site, slug)}]},
     ]
-    title = "Ремонт %s у Києві — діагностика, ТО, кузовний ремонт | АвтоТочка" % b["title"]
+    title = "Ремонт %s у Києві — діагностика, ТО, кузовний ремонт | АвтоКрапка" % b["title"]
     desc = "%s: %s. Діагностика, ТО, шиномонтаж, кузовний ремонт, полірування. " \
            "Фіксована ціна до робіт, гарантія 12 місяців, онлайн-запис." % (
                b["title"], ", ".join(b["models"][:5]))

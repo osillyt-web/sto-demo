@@ -47,7 +47,7 @@ def post(path, data, cookie=None, follow=True):
 # ---------- главная ----------
 status, html, _ = get("/")
 check("GET / = 200", status == 200)
-check("главная: бренд", "АвтоТочка" in html)
+check("главная: бренд", "АвтоКрапка" in html)
 check("главная: калькулятор на месте", 'id="calc-form"' in html)
 check("главная: чекбоксы услуг из БД", html.count('name="svc"') >= 3, html.count('name="svc"'))
 check("главная: форма записи", 'id="lead-form"' in html)
@@ -557,7 +557,7 @@ _c = _http.HTTPConnection("127.0.0.1", 8000, timeout=10)
 _c.request("GET", "/")
 _srv = _c.getresponse().getheader("Server") or ""
 _c.close()
-check("заголовок Server не содержит версию Python", "Python" not in _srv and "AutoTochka" in _srv, _srv)
+check("заголовок Server не содержит версию Python", "Python" not in _srv and "avtokrapka" in _srv, _srv)
 
 # ---------- эксплуатация: health, бэкапы, журнал, пароль ----------
 import os as _os, glob as _glob, sqlite3 as _sqlite
@@ -759,7 +759,7 @@ _, home3, home3_h = get("/")
 check("головна: є блок реальної карти .map-card", 'class="map-card"' in home3)
 check("головна: карта — справжній iframe Google Maps з координатами",
       "https://www.google.com/maps?q=50.4715341,30.4985365" in home3)
-check("головна: у карти є підпис для скринрідера", 'title="Мапа: АвтоТочка, Київ, вул. Кирилівська, 41"' in home3)
+check("головна: у карти є підпис для скринрідера", 'title="Мапа: АвтоКрапка, Київ, вул. Кирилівська, 41"' in home3)
 check("головна: карта вантажиться ліниво (не гальмує перший екран)",
       'loading="lazy"' in home3)
 check("головна: адреса вказана і збігається з точкою на карті",

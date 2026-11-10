@@ -318,7 +318,7 @@
     if (reviewBtn) {
       const link = document.querySelector('meta[name="reviews-url"]')?.content ||
                    "https://maps.google.com/";
-      const text = "Дякуємо, що обрали АвтоТочку! Якщо все сподобалось — залиште, будь ласка, " +
+      const text = "Дякуємо, що обрали АвтоКрапку! Якщо все сподобалось — залиште, будь ласка, " +
                    "відгук, це допомагає нам: " + link;
       const copied = await copyText(text);
       toast(copied ? "Прохання про відгук скопійовано" : text);
