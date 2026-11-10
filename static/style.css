@@ -1,4 +1,14 @@
 /* АвтоКрапка — тёмная тема, адаптив от 360px */
+/* полоса о демонстрации — первое, что видно на странице, до всякой прокрутки */
+.demo-bar{background:#241408;border-bottom:1px solid rgba(255,106,26,.45)}
+.demo-bar-inner{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  padding:9px 0;font-size:13.5px;line-height:1.45;color:var(--text);text-align:center}
+.demo-bar b{font-weight:600}
+.demo-bar a{color:var(--accent);font-weight:600;text-decoration:underline}
+@media (max-width:560px){
+  .demo-bar-inner{font-size:12.5px;padding:8px 6px;gap:6px}
+  .demo-bar-inner span:nth-child(2){flex:1 1 100%}
+}
 :root{
   --bg:#0a0c10;
   --bg-2:#0f1218;

@@ -81,7 +81,7 @@
   "engine": "chromium",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 543, h1 вес 800"
+  "detail": "правил 550, h1 вес 800"
  },
  {
   "engine": "chromium",
@@ -231,7 +231,7 @@
   "engine": "firefox",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 543, h1 вес 800"
+  "detail": "правил 550, h1 вес 800"
  },
  {
   "engine": "firefox",
@@ -381,7 +381,7 @@
   "engine": "webkit",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 543, h1 вес 800"
+  "detail": "правил 550, h1 вес 800"
  },
  {
   "engine": "webkit",
