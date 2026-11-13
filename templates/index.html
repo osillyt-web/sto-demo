@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google" content="notranslate">
 <title>АвтоКрапка — СТО та детейлінг у Києві | Запис онлайн</title>
-<meta name="description" content="Ремонт, ТО, шиномонтаж, кузовний ремонт і детейлінг у Києві. Онлайн-запис за 30 секунд, прозорий прайс, гарантія 12 місяців на роботи. Калькулятор вартості.">
+<meta name="description" content="Ремонт, ТО, шиномонтаж, кузовний ремонт і детейлінг у Києві. Онлайн-запис за 30 секунд, прозорий прайс. Калькулятор вартості.">
 <meta name="theme-color" content="#0a0c10">
 <link rel="canonical" href="{{SITE_URL}}/">
 <meta property="og:title" content="АвтоКрапка — СТО та детейлінг у Києві">
-<meta property="og:description" content="Онлайн-запис, фіксована ціна до початку робіт, гарантія 12 місяців. Калькулятор вартості ремонту.">
+<meta property="og:description" content="Онлайн-запис, фіксована ціна до початку робіт. Калькулятор вартості ремонту.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{SITE_URL}}/">
 <meta property="og:image" content="{{SITE_URL}}/static/img/hero.webp">
@@ -21,18 +21,13 @@
       imagesrcset="/static/img/hero-sm.webp 760w, /static/img/hero.webp 1920w" imagesizes="100vw"
       fetchpriority="high">
 <link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<script defer src="/static/demo-banner.js?v={{ASSET_V}}"></script>
 <script type="application/ld+json">{{JSONLD}}</script>
 <script type="application/ld+json">{{JSONLD_FAQ}}</script>
 </head>
 <body>
 
-<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
-  <div class="wrap demo-bar-inner">
-    <span class="demo-dot" aria-hidden="true">i</span>
-    <span><b>Демонстраційний сайт.</b> Назва, цифри, відгуки, адреса й телефон вигадані.</span>
-    <a href="/cases#offer">Хочете такий сайт для свого СТО? →</a>
-  </div>
-</div>
+
 
 <header class="top" id="top">
   <div class="wrap top-inner">
@@ -74,7 +69,7 @@
     <a href="#prices">Ціни</a>
     <a href="#reviews">Відгуки</a>
     <a href="#contacts">Контакти</a>
-    <a href="/cases#offer">Сайт для вашого СТО</a>
+    <a href="/order">Сайт для вашого СТО</a>
     <a href="/cases">Портфоліо</a>
     <a class="btn btn-accent" href="#book">Записатись</a>
     <div class="menu-msgr">
@@ -84,6 +79,14 @@
     </div>
   </div>
 </header>
+<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
+  <div class="wrap demo-bar-inner">
+    <span class="demo-dot" aria-hidden="true">i</span>
+    <span class="demo-bar-copy"><b>Це демо.</b> Потрібен сайт або Telegram-бот для вашого бізнесу?</span>
+    <a class="demo-bar-cta" href="/order#directions">Переглянути варіанти</a>
+    <button class="demo-bar-close" type="button" aria-label="Закрити повідомлення" title="Закрити повідомлення">×</button>
+  </div>
+</div>
 
 <main id="main">
 
@@ -98,17 +101,12 @@
     <div class="hero-copy">
       <p class="eyebrow"><span class="dot"></span> Київ · вул. Кирилівська, 41 · Пн–Сб 9:00–19:00</p>
       <h1>Ремонт і детейлінг авто <span class="accent">з записом онлайн</span></h1>
-      <p class="lead">Діагностика, ТО, шиномонтаж, кузовний ремонт і полірування. Фіксована ціна до початку робіт, фото-звіт кожного етапу, гарантія 12 місяців.</p>
+      <p class="lead">Діагностика, ТО, шиномонтаж, кузовний ремонт і полірування. Фіксована ціна до початку робіт, фото-звіт кожного етапу.</p>
       <div class="hero-cta">
         <a class="btn btn-accent btn-lg" href="#book">Записатись на сервіс</a>
         <a class="btn btn-ghost btn-lg" href="#calc">Розрахувати ціну</a>
       </div>
-      <ul class="facts">
-        <li><b>12</b><span>років на ринку</span></li>
-        <li><b>4.9</b><span>рейтинг Google</span></li>
-        <li><b>30 хв</b><span>на діагностику</span></li>
-        <li><b>12 міс</b><span>гарантія</span></li>
-      </ul>
+
     </div>
 
     <div class="hero-card" data-reveal>
@@ -130,7 +128,6 @@
   <div class="wrap strip-inner">
     <div class="strip-item"><b>Фіксована ціна</b><span>погоджуємо до початку робіт</span></div>
     <div class="strip-item"><b>Фото-звіт</b><span>кожен етап у вашому чаті</span></div>
-    <div class="strip-item"><b>Гарантія 12 міс</b><span>на роботи та запчастини</span></div>
     <div class="strip-item"><b>Запчастини в наявності</b><span>оригінал або аналог на вибір</span></div>
   </div>
 </div>
@@ -202,10 +199,12 @@
 </section>
 
 <section id="calc" class="section">
-  <div class="wrap two-col calc-wrap">
-    <div>
+  <div class="wrap calc-wrap">
+    <div class="calc-head">
       <h2>Калькулятор вартості</h2>
       <p class="sub">Оберіть роботи та клас авто — побачите орієнтовний діапазон. Точну суму підтвердимо після огляду.</p>
+    </div>
+    <div class="two-col calc-layout">
       <form id="calc-form" class="calculator">
         <fieldset>
           <legend>Що потрібно зробити</legend>
@@ -228,20 +227,16 @@
         <button class="btn btn-accent" type="submit">Отримати точну ціну</button>
         <p class="calc-note">Кошторис з'явиться у формі запису. Оплата — після робіт.</p>
       </form>
-    </div>
-    <div class="calc-aside">
-      <h3>Як формується ціна</h3>
-      <ul class="bullets">
-        <li><b>Базова вартість</b> роботи — за прайсом.</li>
-        <li><b>Клас авто</b> — коефіцієнт від 1.0 до 1.5 (розмір, доступ до вузлів).</li>
-        <li><b>Стан і запчастини</b> — узгоджуємо окремо, до робіт.</li>
-      </ul>
-      <div class="note-box">
-        <b>Діагностика безкоштовна</b>, якщо замовляєте ремонт у нас. Окремо — 450 ₴.
-      </div>
-      <div class="guarantee">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-        <span>Гарантія 12 місяців на виконані роботи — письмово в замовленні.</span>
+      <div class="calc-aside">
+        <h3>Як формується ціна</h3>
+        <ul class="bullets">
+          <li><b>Базова вартість</b> роботи — за прайсом.</li>
+          <li><b>Клас авто</b> — коефіцієнт від 1.0 до 1.5 (розмір, доступ до вузлів).</li>
+          <li><b>Стан і запчастини</b> — узгоджуємо окремо, до робіт.</li>
+        </ul>
+        <div class="note-box">
+          <b>Діагностика безкоштовна</b>, якщо замовляєте ремонт у нас. Окремо — 450 ₴.
+        </div>
       </div>
     </div>
   </div>
@@ -279,7 +274,7 @@
 <section id="reviews" class="section section-alt">
   <div class="wrap">
     <div class="sec-head"><div><h2>Відгуки клієнтів</h2>
-      <p class="sub">{{C_REVIEWS_NOTE}} · <a class="link-more" href="{{C_REVIEWS_URL}}" target="_blank" rel="noopener">Читати в Google →</a></p>
+      <p class="sub"><a class="link-more" href="{{C_REVIEWS_URL}}" target="_blank" rel="noopener">Читати в Google →</a></p>
         <p class="demo-note demo-note--tight">Відгуки, імена й оцінки — демонстраційні: показують,
           як виглядатиме цей блок на сайті СТО.</p></div></div>
     <div class="reviews">
@@ -311,10 +306,10 @@
 
 <section class="section" id="guarantee">
   <div class="wrap">
-    <div class="sec-head"><div><h2>Гарантія і прозорість</h2>
+    <div class="sec-head"><div><h2>Прозорість</h2>
       <p class="sub">Це не обіцянки на словах — кожен пункт зафіксований у замовленні.</p></div></div>
     <div class="trust">
-      <div class="trust-card"><b>12 місяців</b><span>Гарантія на виконані роботи письмово. Запчастини, які ставимо ми, — гарантія виробника.</span></div>
+
       <div class="trust-card"><b>Ціна до робіт</b><span>Суму погоджуємо до початку і не змінюємо без вашої згоди. Жодних «доплат за складність».</span></div>
       <div class="trust-card"><b>Фото-звіт</b><span>Фотографуємо етапи й зняті деталі, надсилаємо в чат. Ви бачите, за що платите.</span></div>
       <div class="trust-card"><b>Заміна авто</b><span>Якщо не встигаємо в строк — попереджаємо заздалегідь і даємо підміну або пріоритет.</span></div>

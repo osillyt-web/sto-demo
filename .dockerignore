@@ -1,0 +1,14 @@
+.git
+.gitignore
+pwenv
+__pycache__
+*.pyc
+data
+backups
+shots
+tools
+assets_tmp
+backup_v2
+AUDIT
+*.log
+*.md

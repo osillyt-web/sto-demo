@@ -17,15 +17,10 @@
 <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<script defer src="/static/demo-banner.js?v={{ASSET_V}}"></script>
 </head>
 <body class="cases-page">
-<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
-  <div class="wrap demo-bar-inner">
-    <span class="demo-dot" aria-hidden="true">i</span>
-    <span><b>Демонстраційний сайт.</b> Назва, цифри, відгуки, адреса й телефон вигадані.</span>
-    <a href="/cases#offer">Хочете такий сайт для свого СТО? →</a>
-  </div>
-</div>
+
 
 
 <header class="top">
@@ -41,10 +36,18 @@
     </nav>
     <div class="top-actions">
       <a class="btn btn-ghost" href="/">На сайт</a>
-      <a class="btn btn-accent" href="#offer">Замовити схоже</a>
+      <a class="btn btn-accent" href="/order">Замовити схоже</a>
     </div>
   </div>
 </header>
+<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
+  <div class="wrap demo-bar-inner">
+    <span class="demo-dot" aria-hidden="true">i</span>
+    <span class="demo-bar-copy"><b>Це демо.</b> Потрібен сайт або Telegram-бот для вашого бізнесу?</span>
+    <a class="demo-bar-cta" href="/order#directions">Переглянути варіанти</a>
+    <button class="demo-bar-close" type="button" aria-label="Закрити повідомлення" title="Закрити повідомлення">×</button>
+  </div>
+</div>
 
 <main id="main">
 
@@ -199,7 +202,7 @@
       цінами й фото. Не сподобається — не починаємо, і ви нічого не винні.</p>
 
     <div class="hero-cta">
-      <a class="btn btn-accent btn-lg" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Написати в Telegram</a>
+      <a class="btn btn-accent btn-lg" href="/order">Обговорити сайт</a>
       <a class="btn btn-ghost btn-lg" href="/pricing">Тарифи й що входить</a>
     </div>
     <p class="case-note">Працюю по всій Україні. Спілкуємось текстом — дзвінки не потрібні.</p>
@@ -234,7 +237,7 @@
     <p class="lead">Пакет «сайт + Telegram-бот + картка Google Business» — 7–10 днів.
       Підтримка в перші місяці включена. Ціна фіксується до початку робіт.</p>
     <div class="hero-cta">
-      <a class="btn btn-accent btn-lg" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Написати в Telegram</a>
+      <a class="btn btn-accent btn-lg" href="/order">Обговорити сайт</a>
       <a class="btn btn-ghost btn-lg" href="/pricing">Подивитися тарифи</a>
     </div>
   </section>

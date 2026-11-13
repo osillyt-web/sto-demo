@@ -16,15 +16,10 @@
 <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<script defer src="/static/demo-banner.js?v={{ASSET_V}}"></script>
 </head>
 <body class="cases-page">
-<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
-  <div class="wrap demo-bar-inner">
-    <span class="demo-dot" aria-hidden="true">i</span>
-    <span><b>Демонстраційний сайт.</b> Назва, цифри, відгуки, адреса й телефон вигадані.</span>
-    <a href="/cases#offer">Хочете такий сайт для свого СТО? →</a>
-  </div>
-</div>
+
 
 
 <header class="top">
@@ -39,10 +34,18 @@
     </nav>
     <div class="top-actions">
       <a class="btn btn-ghost" href="/">Сайт</a>
-      <a class="btn btn-accent" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Написати</a>
+      <a class="btn btn-accent" href="/order">Обговорити</a>
     </div>
   </div>
 </header>
+<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
+  <div class="wrap demo-bar-inner">
+    <span class="demo-dot" aria-hidden="true">i</span>
+    <span class="demo-bar-copy"><b>Це демо.</b> Потрібен сайт або Telegram-бот для вашого бізнесу?</span>
+    <a class="demo-bar-cta" href="/order#directions">Переглянути варіанти</a>
+    <button class="demo-bar-close" type="button" aria-label="Закрити повідомлення" title="Закрити повідомлення">×</button>
+  </div>
+</div>
 
 <main id="main">
 
@@ -65,7 +68,7 @@
         <li>Заявка одразу в Telegram</li>
         <li>Налаштування під ваші послуги й ціни</li>
       </ul>
-      <a class="btn btn-ghost btn-wide" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Обговорити</a>
+      <a class="btn btn-ghost btn-wide" href="/order">Обговорити</a>
     </article>
 
     <article class="tier is-main">
@@ -81,7 +84,7 @@
         <li>Налаштування картки Google Business</li>
         <li>12 місяців підтримки</li>
       </ul>
-      <a class="btn btn-accent btn-wide" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Обговорити</a>
+      <a class="btn btn-accent btn-wide" href="/order">Обговорити</a>
     </article>
 
     <article class="tier">
@@ -94,7 +97,7 @@
         <li>3 місяці ведення картки Google</li>
         <li>Щомісячний звіт по заявках</li>
       </ul>
-      <a class="btn btn-ghost btn-wide" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Обговорити</a>
+      <a class="btn btn-ghost btn-wide" href="/order">Обговорити</a>
     </article>
 
   </section>
@@ -191,8 +194,7 @@
     <h2>Не впевнені, який тариф підходить?</h2>
     <p class="lead">Напишіть — подивимося на ваш сервіс і скажемо прямо, що потрібно, а що зайве.</p>
     <div class="hero-cta">
-      <a class="btn btn-accent btn-lg" href="{{C_TELEGRAM}}" target="_blank" rel="noopener">Написати в Telegram</a>
-      <a class="btn btn-ghost btn-lg" href="{{C_VIBER}}">Написати у Viber</a>
+      <a class="btn btn-accent btn-lg" href="/order">Обговорити сайт</a>
     </div>
   </section>
 

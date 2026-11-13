@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8000"
 OUT = r"C:\Users\Alex\sto_demo\shots"
-PAGES = ["/", "/services", "/services/to", "/brands", "/cases", "/privacy", "/admin/login", "/nope"]
+PAGES = ["/", "/services", "/services/to", "/brands", "/cases", "/pricing", "/order", "/privacy", "/admin/login", "/nope"]
 
 PROBE = """
 () => {

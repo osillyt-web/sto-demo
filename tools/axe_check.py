@@ -11,7 +11,7 @@ import urllib.request
 
 BASE = os.environ.get("BASE_URL", "http://127.0.0.1:8000")
 AXE_URL = "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js"
-PAGES = ["/", "/cases", "/pricing", "/services", "/services/to", "/brands", "/privacy", "/admin/login", "/nope"]
+PAGES = ["/", "/cases", "/pricing", "/order", "/services", "/services/to", "/brands", "/privacy", "/admin/login", "/nope"]
 VIEWS = [("ПК 1440x900", 1440, 900, False), ("телефон 390x844", 390, 844, True)]
 TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"]
 

@@ -121,7 +121,7 @@ def build_service_page(conn, slug):
       <p class="page-lead">%s</p>
       <div class="svc-chips">
         <span class="chip-t">%s</span>
-        <span class="chip-t">Гарантія 12 місяців</span>
+
         <span class="chip-t">Ціна фіксується до робіт</span>
       </div>
       <div class="cta-actions svc-actions">
@@ -188,7 +188,7 @@ def build_service_page(conn, slug):
                          "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in sv["faq"]]},
     ]
     title = "%s у Києві — ціни, що входить, онлайн-запис | АвтоКрапка" % sv["title"]
-    desc = "%s. %s. Ціна фіксується до початку робіт, гарантія 12 місяців. Запис онлайн на сайті." % (
+    desc = "%s. %s. Ціна фіксується до початку робіт. Запис онлайн на сайті." % (
         sv["short"], sv["duration"])
     return title, desc, "/services/" + slug, body, ld, sv["photo"]
 
@@ -211,7 +211,7 @@ def build_brands_index(conn):
 </div></section>''' % (crumbs([("Головна", "/"), ("Марки", None)]), cards)
     return ("Марки авто, з якими працюємо — ремонт і обслуговування у Києві | АвтоКрапка",
             "Volkswagen, Toyota, Skoda, BMW, Renault, Nissan — обслуговування і ремонт у Києві. "
-            "Онлайн-запис, фіксована ціна до робіт, гарантія 12 місяців.",
+            "Онлайн-запис, фіксована ціна до робіт.",
             "/brands", body,
             {"@context": "https://schema.org", "@type": "CollectionPage",
              "name": "Марки авто", "url": _site + "/brands"}, "hero")
@@ -243,9 +243,8 @@ def build_brand_page(conn, slug):
   </div>
   <h2 class="h2">Що робимо з %s</h2>
   <div class="svc-mini-grid">%s</div>
-  <div class="why"><b>Гарантія і чесність</b><p>Працюємо за регламентом виробника, ставимо відмітку
-  в сервісній книжці, зняті деталі показуємо. Гарантія на роботи — 12 місяців. Якщо ремонт
-  не потрібен — так і скажемо.</p></div>
+  <div class="why"><b>Чесність</b><p>Працюємо за регламентом виробника, ставимо відмітку
+  в сервісній книжці, зняті деталі показуємо. Якщо ремонт не потрібен — так і скажемо.</p></div>
 </div></section>''' % (
         crumbs([("Головна", "/"), ("Марки", "/brands"), (b["title"], None)]),
         _esc(b["title"]), _esc(b["note"]), models, _phone_raw(conn),
@@ -266,6 +265,6 @@ def build_brand_page(conn, slug):
     ]
     title = "Ремонт %s у Києві — діагностика, ТО, кузовний ремонт | АвтоКрапка" % b["title"]
     desc = "%s: %s. Діагностика, ТО, шиномонтаж, кузовний ремонт, полірування. " \
-           "Фіксована ціна до робіт, гарантія 12 місяців, онлайн-запис." % (
+           "Фіксована ціна до робіт, онлайн-запис." % (
                b["title"], ", ".join(b["models"][:5]))
     return title, desc, "/brands/" + slug, body, ld, b["photo"]

@@ -69,8 +69,10 @@
       <tr>
         <td class="hide-sm"><span class="sub-line">${esc(l.created_at)}</span></td>
         <td>
-          <b>${esc(l.name)}</b>${l.kind === "callback" ? ' <span class="badge cb">дзвінок</span>' : ""}
-          <span class="sub-line"><a href="tel:${esc(l.phone)}">${esc(l.phone)}</a></span>
+          <b>${esc(l.name)}</b>${l.kind === "callback" ? ' <span class="badge cb">дзвінок</span>' : ""}${l.kind === "order" ? ' <span class="badge form">з форми</span>' : ""}
+          <span class="sub-line">${l.phone && l.phone.includes("@")
+              ? `<a href="mailto:${esc(l.phone)}">${esc(l.phone)}</a>`
+              : `<a href="tel:${esc(l.phone)}">${esc(l.phone)}</a>`}</span>
         </td>
         <td class="hide-sm">${esc(l.service) || '<span class="muted">—</span>'}
           <span class="sub-line">${esc(l.car) || "авто не вказано"}</span></td>
@@ -208,7 +210,7 @@
 
   /* ------------------------------ контакты и слоты ------------------------------ */
   const contactFields = ["c_phone", "c_phone_raw", "c_address", "c_hours", "c_telegram",
-                         "c_viber", "c_whatsapp", "c_reviews_url", "c_reviews_note"];
+                         "c_viber", "c_whatsapp", "c_reviews_url"];
 
   async function loadContacts() {
     let data;

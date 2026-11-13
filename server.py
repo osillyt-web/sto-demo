@@ -25,7 +25,9 @@ import secrets
 import datetime
 import mimetypes
 import threading
+import smtplib
 import urllib.request
+from email.message import EmailMessage
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote, quote
 
@@ -65,6 +67,8 @@ HOST = os.environ.get("HOST", "127.0.0.1")
 SITE_URL = (os.environ.get("SITE_URL")
             or os.environ.get("RENDER_EXTERNAL_URL")
             or f"http://127.0.0.1:{PORT}")
+# Contact for the portfolio/order page (provided by the owner, separate from demo STО contacts).
+PORTFOLIO_EMAIL = os.environ.get("PORTFOLIO_EMAIL", "codeveil3@gmail.com")
 
 # сколько заявок с одного IP принимаем за окно (защита от спама); на демо-стенде можно поднять
 LEAD_LIMIT = int(os.environ.get("LEAD_LIMIT", "60"))      # принятых заявок с одного IP
@@ -108,14 +112,11 @@ FAQ = [
      "Калькулятор показує діапазон за прайсом і класом авто. Остаточну суму "
      "підтверджуємо після огляду — і вона не змінюється без вашої згоди."),
     ("Чи можна приїхати зі своїми запчастинами?",
-     "Так. У такому разі гарантія 12 місяців поширюється на роботи, а на деталі — "
-     "гарантія постачальника."),
+     "Так, можна."),
     ("Що робите, якщо не встигаєте в строк?",
      "Передзвонюємо заздалегідь і пропонуємо варіанти: підміна авто або перенесення "
      "з пріоритетом. Мовчки не затримуємо — це принцип."),
-    ("Чи є гарантія і на що саме?",
-     "12 місяців на виконані роботи, письмово в замовленні. На запчастини, які "
-     "постачаємо ми, — гарантія виробника."),
+
 ]
 
 REVIEWS = [
@@ -146,7 +147,6 @@ CONTACT_DEFAULTS = {
     "viber": "viber://chat?number=%2B380440000000",
     "whatsapp": "https://wa.me/380440000000",
     "reviews_url": "https://www.google.com/maps/search/?api=1&query=50.4715341,30.4985365",
-    "reviews_note": "4.9 з 5 · 213 відгуків у Google",
 }
 
 WEEKDAYS_UK = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
@@ -471,6 +471,69 @@ def notify_async(text):
     threading.Thread(target=send_telegram, args=(text,), daemon=True).start()
 
 
+# ------------------------------------------------- заявки со страницы /order
+ORDER_TOPICS = ("Сайт для СТО", "Telegram-бот для бізнесу", "Сайт і бот разом")
+
+
+def valid_contact(value):
+    """Контакт из формы /order: либо email, либо телефон (9–15 цифр)."""
+    value = (value or "").strip()
+    if not value:
+        return False
+    if "@" in value:
+        return bool(re.match(r"^[^@\s]{1,64}@[^@\s.]{1,63}(\.[^@\s.]{2,})+$", value))
+    digits = sum(ch.isdigit() for ch in value)
+    return 9 <= digits <= 15 and len(value) <= 40
+
+
+def send_order_email(lead_id, name, contact, topic, message):
+    """Письмо о заявке. Настройки берутся из переменных окружения:
+    SMTP_HOST, SMTP_PORT (587), SMTP_USER, SMTP_PASS, SMTP_FROM, ORDER_EMAIL_TO.
+    Без SMTP_HOST письмо не отправляется — заявка уже лежит в базе и ушла в Telegram,
+    поэтому форма не должна показывать клиенту ошибку."""
+    host = os.environ.get("SMTP_HOST", "").strip()
+    if not host:
+        return False, "SMTP не налаштовано"
+    try:
+        port = int(os.environ.get("SMTP_PORT", "587"))
+    except ValueError:
+        port = 587
+    user = os.environ.get("SMTP_USER", "").strip()
+    password = os.environ.get("SMTP_PASS", "")
+    sender = (os.environ.get("SMTP_FROM") or user or PORTFOLIO_EMAIL).strip()
+    to_addr = (os.environ.get("ORDER_EMAIL_TO") or PORTFOLIO_EMAIL).strip()
+
+    body = (
+        f"Нова заявка зі сторінки замовлення (№{lead_id})\n\n"
+        f"Ім'я: {name}\n"
+        f"Контакт: {contact}\n"
+        f"Напрям: {topic or '—'}\n\n"
+        f"Повідомлення:\n{message or '—'}\n\n"
+        f"Адмінка: {SITE_URL}/admin\n"
+    )
+    msg = EmailMessage()
+    msg["Subject"] = f"Заявка №{lead_id}: {topic or 'без напряму'} — {name}"
+    msg["From"] = sender
+    msg["To"] = to_addr
+    if "@" in contact:
+        msg["Reply-To"] = contact
+    msg.set_content(body)
+
+    try:
+        with smtplib.SMTP(host, port, timeout=10) as smtp:
+            smtp.ehlo()
+            if os.environ.get("SMTP_TLS", "1") not in ("0", "false", "no"):
+                smtp.starttls()
+                smtp.ehlo()
+            if user:
+                smtp.login(user, password)
+            smtp.send_message(msg)
+        return True, "ok"
+    except Exception as exc:                 # нет сети, неверные данные, блокировка
+        return False, str(exc)[:200]
+
+
+
 # ----------------------------------------------------------------- сервер
 
 
@@ -785,6 +848,12 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/":
             return self.render_index()
+        if path == "/order":
+            page = (tpl("order.html")
+                    .replace("{{SITE_URL}}", SITE_URL)
+                    .replace("{{ORDER_EMAIL}}", esc(PORTFOLIO_EMAIL))
+                    .replace("{{YEAR}}", str(datetime.date.today().year)))
+            return self.send(200, page, cache="public, max-age=600")
         if path == "/cases":
             conn = get_db()
             try:
@@ -929,6 +998,8 @@ class Handler(BaseHTTPRequestHandler):
                     f"  <url><loc>{SITE_URL}/cases</loc><lastmod>{today}</lastmod>"
                     "<changefreq>monthly</changefreq><priority>0.6</priority></url>\n"
                     f"  <url><loc>{SITE_URL}/pricing</loc><lastmod>{today}</lastmod>"
+                    "<changefreq>monthly</changefreq><priority>0.7</priority></url>\n"
+                    f"  <url><loc>{SITE_URL}/order</loc><lastmod>{today}</lastmod>"
                     "<changefreq>monthly</changefreq><priority>0.7</priority></url>\n"
                     + "".join(
                         f"  <url><loc>{SITE_URL}/services/{slug}</loc><lastmod>{today}</lastmod>"
@@ -1276,6 +1347,48 @@ class Handler(BaseHTTPRequestHandler):
                     f"Заявка №{lead_id} у адмінці: {SITE_URL}/admin")
             return self.json_out({"ok": True, "id": lead_id})
 
+        if path == "/api/order":
+            if not rate_ok(ATTEMPT_HITS, self.ip(), ATTEMPT_LIMIT, LEAD_WINDOW_S):
+                return self.json_out({"ok": False, "error": "Забагато запитів"}, 429)
+            if (data.get("company") or "").strip():          # honeypot: бот заполнил скрытое поле
+                return self.json_out({"ok": True})
+            name = (data.get("name") or "").strip()
+            contact = (data.get("contact") or "").strip()
+            topic = (data.get("topic") or "").strip()
+            message = (data.get("message") or "").strip()
+            consent = str(data.get("consent") or "")
+            if len(name) < 2:
+                return self.json_out({"ok": False, "error": "Вкажіть ім'я"}, 400)
+            if not valid_contact(contact):
+                return self.json_out(
+                    {"ok": False, "error": "Вкажіть email або телефон у форматі +380 XX XXX XX XX"}, 400)
+            if consent not in ("1", "on", "true"):
+                return self.json_out({"ok": False, "error": "Потрібна згода на обробку даних"}, 400)
+            if topic and topic not in ORDER_TOPICS:
+                return self.json_out({"ok": False, "error": "Оберіть напрям зі списку"}, 400)
+            if not rate_ok(LEAD_HITS, self.ip(), LEAD_LIMIT, LEAD_WINDOW_S):
+                return self.json_out({"ok": False, "error": "Забагато заявок"}, 429)
+
+            conn = get_db()
+            conn.execute("""INSERT INTO leads (name, phone, service, comment, source, kind, token)
+                            VALUES (?,?,?,?,?,?,?)""",
+                         (name[:80], contact[:80], topic[:80], message[:800],
+                          "Сторінка замовлення", "order", secrets.token_urlsafe(9)))
+            lead_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.execute("INSERT INTO events (name, path, session) VALUES ('order_lead', '/order', ?)",
+                         ((data.get("sid") or "")[:32],))
+            conn.commit()
+            conn.close()
+
+            notify_async("✉️ <b>Заявка зі сторінки замовлення</b>\n\n"
+                         f"👤 {esc(name)}\n📮 {esc(contact)}\n"
+                         f"🧩 {esc(topic or '—')}\n💬 {esc((message or '—')[:300])}\n\n"
+                         f"Заявка №{lead_id} у адмінці: {SITE_URL}/admin")
+            mailed, why = send_order_email(lead_id, name, contact, topic, message)
+            if not mailed:
+                self.log_error("order_email: заявка %s — %s", lead_id, why)
+            return self.json_out({"ok": True, "id": lead_id, "email": mailed})
+
         if path == "/admin/login":
             ip = self.ip()
             not_long_ago = datetime.datetime.now() - datetime.timedelta(minutes=5)
@@ -1580,7 +1693,6 @@ class Handler(BaseHTTPRequestHandler):
                 .replace("{{C_VIBER}}", esc(contacts["viber"]))
                 .replace("{{C_WHATSAPP}}", esc(contacts["whatsapp"]))
                 .replace("{{C_REVIEWS_URL}}", esc(contacts["reviews_url"]))
-                .replace("{{C_REVIEWS_NOTE}}", esc(contacts["reviews_note"]))
                 .replace("{{YEAR}}", str(datetime.date.today().year)))
         # public + обязательная перепроверка: данные (слоты) свежие, но браузер может вернуть
         # страницу из своего кэша при навигации «назад» — это заметно быстрее

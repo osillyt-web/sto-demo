@@ -17,6 +17,13 @@ def check(name, cond, extra=""):
         fails.append(name)
 
 
+def has_12_month_work_warranty(markup):
+    text = re.sub(r"<[^>]+>", " ", markup)
+    return bool(re.search(
+        r"(?:гаранті[яюєї].{0,80}12\s*(?:місяц\w*|міс)|12\s*(?:місяц\w*|міс).{0,80}гаранті[яюєї])",
+        text, re.I | re.S))
+
+
 def get(path, cookie=None):
     req = urllib.request.Request(BASE + path)
     if cookie:
@@ -54,6 +61,30 @@ check("главная: форма записи", 'id="lead-form"' in html)
 check("главная: нет незаполненных плейсхолдеров", "{{" not in html,
       [h for h in ("SERVICE_CARDS", "PRICE_ROWS", "SERVICE_OPTIONS", "SERVICE_CHECKBOXES")
        if "{{" + h in html])
+facts_match = re.search(r'<ul class="facts">(.*?)</ul>', html, re.S)
+lead_match = re.search(r'<p class="lead">(.*?)</p>', html, re.S)
+facts_html = facts_match.group(1) if facts_match else ""
+lead_html = lead_match.group(1) if lead_match else ""
+check("главная: неподтверждённые обещания и рейтинг отсутствуют",
+      all(value not in facts_html for value in ("років на ринку", "30 хв", "12 міс"))
+      and "гарантія 12 місяців" not in lead_html
+      and '<div class="strip-item"><b>Гарантія 12 міс</b>' not in html
+      and '<li><b>4.9</b>' not in html
+      and "4.9 з 5" not in html
+      and "рейтинг Google" not in html
+      and "213 відгуків у Google" not in html)
+_warranty_routes = ["/", "/services", "/brands"]
+_warranty_routes += ["/services/" + slug for slug in
+                     ("diahnostyka", "to", "shynomontazh", "kuzovnyi", "poliruvannia", "khimchystka")]
+_warranty_routes += ["/brands/" + slug for slug in
+                     ("volkswagen", "toyota", "skoda", "bmw", "renault", "nissan")]
+_warranty_offenders = []
+for _route in _warranty_routes:
+    _status, _page, _ = get(_route)
+    if _status != 200 or has_12_month_work_warranty(_page):
+        _warranty_offenders.append(_route)
+check("публичные страницы СТО не обещают гарантию 12 месяцев",
+      not _warranty_offenders, _warranty_offenders)
 
 status, svc_json, _ = get("/api/services")
 services = json.loads(svc_json)
@@ -349,8 +380,8 @@ check("у портфоліо немає плейсхолдерів", "{{" not in
 check("портфоліо: є блок пропозиції", 'id="offer"' in body)
 check("портфоліо: у пропозиції є ціна і строк", "19 900" in body and "7–10" in body)
 check("портфоліо: обіцяно показати головну до оплати", "До оплати покажу" in body)
-check("портфоліо: кнопки ведуть у Telegram, а не на форму запису в автосервіс",
-      "t.me/" in body and "/#book" not in body)
+check("портфолио: кнопки ведут на страницу заказа, а не на demo-контакты СТО",
+      'href="/order"' in body and "avtokrapka_demo" not in body and "/#book" not in body)
 check("портфоліо: є блок «8 пунктів» як стандарт якості",
       'id="standard"' in body and "8 пунктами" in body)
 check("портфоліо: сказано про роботу текстом, без дзвінків", "дзвінки не потрібні" in body)
@@ -445,9 +476,9 @@ status, _, _ = get_soft("/brands/no-such-brand")
 check("невідома марка = 404", status == 404)
 
 _, sm, _ = get("/sitemap.xml")
-check("sitemap: 18 адрес, включно з послугами, марками й тарифами",
-      sm.count("<loc>") == 18 and "/services/to" in sm and "/brands/skoda" in sm
-      and "/pricing" in sm, sm.count("<loc>"))
+check("sitemap: 19 адрес, включая страницу заказа, услуги и марки",
+      sm.count("<loc>") == 19 and "/services/to" in sm and "/brands/skoda" in sm
+      and "/pricing" in sm and "/order" in sm, sm.count("<loc>"))
 
 # ---------- напоминание о записи ----------
 _, days_raw, _ = get("/api/slots/days")
@@ -666,6 +697,8 @@ check("скрипт кнопки віддається (200) і вміє пере
       st == 200 and "aria-pressed" in eye and "password" in eye)
 _, adm, _ = get("/admin", cookie)
 check("адмінка: два поля з кнопкою показу", adm.count("data-eye") == 2, adm.count("data-eye"))
+check("адмінка: поле рейтинга сайта удалено",
+      'name="c_reviews_note"' not in adm and "Оцінка для сайту" not in adm)
 check("адмінка: вимоги до пароля узгоджені з сервером (10 символів)",
       "мінімум 10 символів" in adm and 'minlength="10"' in adm)
 check("адмінка: на сторінці актуальна вартість хешування",
@@ -798,7 +831,8 @@ check("тарифи: три тарифи на сторінці", pr.count('<arti
 check("тарифи: ціни 7 900 / 19 900 / 24 900",
       all(x in pr for x in ("7 900", "19 900", "24 900")))
 check("тарифи: середній тариф позначений як рекомендований", "Рекомендуємо" in pr)
-check("тарифи: у кожного тарифу є кнопка дії", pr.count("Обговорити") == 3, pr.count("Обговорити"))
+_tier_ctas = _re.findall(r'<a class="btn (?:btn-ghost|btn-accent) btn-wide" href="/order">Обговорити</a>', pr)
+check("тарифи: у кожного тарифу є кнопка заказа", len(_tier_ctas) == 3, len(_tier_ctas))
 check("тарифи: без незамінених плейсхолдерів", "{{" not in pr)
 check("тарифи: є один main і заголовок h1", pr.count("<main") == 1 and "<h1>Тарифи</h1>" in pr)
 check("тарифи: блок «хто що робить» є", 'id="who-does-what"' in pr)
@@ -831,19 +865,21 @@ check("публічне API слотів: без no-store",
 
 # ---------- правки по аудиту 10.11.2026: демо-пометки, оффер с главной, вопрос без записи ----------
 _, _h, _ = get("/")
-# полоса о демонстрации должна стоять САМЫМ ПЕРВЫМ элементом страницы — иначе она
-# уходит за нижний край окна и её не видно без прокрутки (ошибка, найденная 10.11.2026)
-check("главная: полоса «демонстраційний сайт» стоит в самом начале страницы",
-      _h.find('class="demo-bar"') > 0 and _h.find('class="demo-bar"') < _h.find('<header'),
-      _h.find('class="demo-bar"'))
-check("главная: в полосе есть текст о вымышленных данных и ссылка на предложение",
-      "Назва, цифри, відгуки, адреса й телефон вигадані" in _h and "Хочете такий сайт для свого СТО" in _h)
+# После проверки UX-специалистов баннер стоит в потоке страницы сразу после шапки,
+# а не фиксированным/перекрывающим слоем.
+check("главная: баннер о демо расположен сразу после шапки",
+      _h.find('class="demo-bar"') > _h.find("</header>"), _h.find('class="demo-bar"'))
+check("главная: в баннере сказано, что это демо и есть два направления",
+      "Це демо." in _h and "Потрібен сайт або Telegram-бот для вашого бізнесу?" in _h)
+check("главная: кнопка баннера ведёт к выбору вариантов",
+      'href="/order#directions">Переглянути варіанти</a>' in _h)
 for _page, _body in (("/cases", None), ("/pricing", None)):
     _b = get(_page)[1]
-    check("%s: та же полоса о демонстрации сверху" % _page, 'class="demo-bar"' in _b)
-check("главная: из пометки ссылка на предложение /cases#offer", 'href="/cases#offer"' in _h)
-check("главная: ссылка на предложение есть и в мобильном меню", _h.count("/cases#offer") >= 2,
-      _h.count("/cases#offer"))
+    check("%s: та же закрываемая плашка после шапки" % _page,
+          'class="demo-bar"' in _b and _b.find("</header>") < _b.find('class="demo-bar"')
+          and 'class="demo-bar-close"' in _b)
+check("главная: ссылка на варианты есть и в мобильном меню",
+      'href="/order">Сайт для вашого СТО' in _h and 'href="/order#directions"' in _h)
 check("главная: пометка у блока отзывов", "Відгуки, імена й оцінки — демонстраційні" in _h)
 check("главная: пометка у контактов", "Адреса, телефон і пошта — вигадані" in _h)
 check("форма: переключатель «записатися / тільки дізнатися ціну»",
@@ -874,6 +910,103 @@ _, _vh, _ = get("/privacy")
 check("политика: помечена как демонстрационный документ", "legal-demo" in _vh)
 check("политика: нет утверждения об HTTPS без оговорки",
       "З'єднання з сайтом захищене протоколом HTTPS." not in _vh)
+
+# ---------- лендинг предлагает оба направления: сайт для СТО и Telegram-бот ----------
+_, _home_order, _ = get("/")
+check("главная: CTA баннера ведёт к вариантам заказа", 'href="/order#directions"' in _home_order)
+for _page in ("/cases", "/pricing"):
+    _, _order_html, _ = get(_page)
+    check("%s: баннер ведёт к вариантам заказа" % _page, 'href="/order#directions"' in _order_html)
+try:
+    _order_status, _order_body, _ = get("/order")
+except urllib.error.HTTPError as _e:
+    _order_status, _order_body = _e.code, _e.read().decode("utf-8")
+check("страница заказа предлагает сайт и Telegram-бот", _order_status == 200 and "Сайт або Telegram-бот для бізнесу" in _order_body, _order_status)
+check("страница заказа: оба направления оформлены отдельно",
+      'id="site-offer"' in _order_body and 'id="bot-offer"' in _order_body)
+check("направление сайта: демо, цена и срок сохранены",
+      'href="/">Відкрити демо АвтоКрапка</a>' in _order_body and "19 900" in _order_body
+      and "7–10 днів" in _order_body)
+_bot_content = _order_body.split('id="bot-offer"', 1)[1].split("</section>", 1)[0] if 'id="bot-offer"' in _order_body else ""
+check("направление Telegram-бота: примеры задач указаны как сценарии, без выдуманной цены",
+      "Можливі сценарії" in _bot_content and "збір звернень" in _bot_content
+      and "відповіді на типові запитання" in _bot_content and "передача запиту адміністратору" in _bot_content
+      and "ціна" not in _bot_content.lower())
+check("направление Telegram-бота: отдельная кнопка обсуждения через email",
+      'mailto:codeveil3@gmail.com?subject=' in _order_body and "Telegram-%D0%B1%D0%BE%D1%82%D0%B0" in _order_body)
+check("страница заказа: контактный email задан и кликабелен",
+      "mailto:codeveil3@gmail.com" in _order_body and "codeveil3@gmail.com" in _order_body)
+check("страница заказа: есть кнопка Viber на найденную бизнес-ссылку",
+      'href="https://viber.me/380963551745"' in _order_body and "Написати у Viber" in _order_body)
+check("страница заказа: WhatsApp открывает предоставленный номер",
+      'href="https://wa.me/380963551745"' in _order_body and "Написати у WhatsApp" in _order_body)
+check("страница заказа: Telegram ведёт в профиль владельца",
+      'href="https://t.me/lumyrix"' in _order_body and "Написати у Telegram" in _order_body)
+check("ссылки мессенджеров открываются безопасно в новой вкладке",
+      _order_body.count('target="_blank" rel="noopener noreferrer"') >= 3)
+check("контакты владельца не попали в демо сайта СТО",
+      "https://viber.me/380963551745" not in _home_order and "https://wa.me/380963551745" not in _home_order
+      and "https://t.me/lumyrix" not in _home_order)
+_, _cases_cta, _ = get("/cases")
+_, _pricing_cta, _ = get("/pricing")
+check("контактные кнопки не обещают прямой Telegram/Viber без реальных ссылок",
+      "Написати в Telegram" not in _cases_cta and "Написати в Telegram" not in _pricing_cta
+      and "Написати у Viber" not in _pricing_cta)
+check("страница заказа: нет демо-ссылок вместо реальных контактов",
+      "avtokrapka_demo" not in _order_body and "+380****0000" not in _order_body)
+check("страница заказа: баннер ведёт к разделу вариантов и можно закрыть",
+      'href="/order#directions"' in _order_body and 'class="demo-bar-close"' in _order_body
+      and "/static/demo-banner.js" in _order_body)
+
+# ---- форма заявки на /order: 4 поля, серверная отправка, защита ----
+check("форма заявки на /order: 4 поля и скрытая ловушка",
+      'id="order-form"' in _order_body and 'name="name"' in _order_body
+      and 'name="contact"' in _order_body and 'name="message"' in _order_body
+      and 'name="topic"' in _order_body and 'name="company"' in _order_body)
+check("форма заявки: у полей есть подписи и автозаполнение",
+      'for="of-name"' in _order_body and 'autocomplete="name"' in _order_body
+      and 'for="of-contact"' in _order_body and 'autocomplete="email"' in _order_body)
+check("форма заявки: согласие на обработку данных обязательно",
+      'name="consent"' in _order_body and 'href="/privacy"' in _order_body)
+check("форма заявки: скрипт отправки подключён", "/static/order.js" in _order_body)
+check("форма заявки скрыта до нажатия кнопки",
+      'id="order-form-wrap" hidden' in _order_body and 'id="order-form-toggle"' in _order_body
+      and 'aria-controls="order-form-wrap"' in _order_body and 'aria-expanded="false"' in _order_body)
+check("форма заявки: без JS остаётся доступной",
+      '<noscript><style>#order-form-wrap{display:block !important}</style></noscript>' in _order_body)
+
+_o_status, _o_body, _ = post("/api/order", {
+    "name": "Тест Форма", "contact": "test-form@example.com",
+    "topic": "Сайт для СТО", "message": "Перевірка форми", "consent": "1"})
+_o_json = json.loads(_o_body) if _o_body.strip().startswith("{") else {}
+check("POST /api/order принимает корректную заявку", _o_status == 200 and _o_json.get("ok") is True, _o_body[:120])
+check("POST /api/order без имени отклоняется",
+      post("/api/order", {"contact": "a@b.co", "consent": "1"})[0] == 400)
+check("POST /api/order без согласия отклоняется",
+      post("/api/order", {"name": "Тест", "contact": "a@b.co"})[0] == 400)
+check("POST /api/order с некорректным контактом отклоняется",
+      post("/api/order", {"name": "Тест", "contact": "abc", "consent": "1"})[0] == 400)
+check("POST /api/order с чужим направлением отклоняется",
+      post("/api/order", {"name": "Тест", "contact": "a@b.co", "topic": "Хак",
+                          "consent": "1"})[0] == 400)
+check("POST /api/order: ловушка для ботов не создаёт заявку",
+      post("/api/order", {"name": "Бот", "contact": "bot@example.com",
+                          "consent": "1", "company": "spam"})[0] == 200)
+check("POST /api/order: телефон принимается как контакт",
+      post("/api/order", {"name": "Тест Телефон", "contact": "+380 67 123 45 67",
+                          "consent": "1"})[0] == 200)
+
+for _public_page in ("/", "/cases", "/pricing", "/privacy", "/services", "/services/to", "/brands", "/brands/volkswagen", "/order"):
+    try:
+        _public_status, _public_html, _ = get(_public_page)
+    except urllib.error.HTTPError as _e:
+        _public_status, _public_html = _e.code, _e.read().decode("utf-8")
+    check("%s: баннер выбора после шапки" % _public_page,
+          _public_status == 200 and 'class="demo-bar"' in _public_html
+          and _public_html.find("</header>") < _public_html.find('class="demo-bar"')
+          and 'href="/order#directions"' in _public_html, _public_status)
+_, _sitemap_order, _ = get("/sitemap.xml")
+check("sitemap содержит страницу вариантов", "/order" in _sitemap_order)
 
 # ---------- уборка: демо-база остаётся чистой после прогона ----------
 # удаляем все заявки тестового клиента: если прошлый прогон упал, за ним остались «хвосты»

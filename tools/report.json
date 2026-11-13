@@ -31,6 +31,18 @@
  },
  {
   "engine": "chromium",
+  "check": "/pricing → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
+  "check": "/order → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "chromium",
   "check": "/privacy → 200",
   "ok": true,
   "detail": "ожидали 200"
@@ -63,7 +75,7 @@
   "engine": "chromium",
   "check": "слоты: есть свободные часы",
   "ok": true,
-  "detail": "6"
+  "detail": "3"
  },
  {
   "engine": "chromium",
@@ -81,7 +93,7 @@
   "engine": "chromium",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 550, h1 вес 800"
+  "detail": "правил 608, h1 вес 800"
  },
  {
   "engine": "chromium",
@@ -123,19 +135,19 @@
   "engine": "chromium",
   "check": "день выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': 'Сьогодні10.1112 віль', 'total': 12}"
+  "detail": "{'ok': True, 'text': 'Сьогодні13.116 вільн', 'total': 12}"
  },
  {
   "engine": "chromium",
   "check": "час выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': '13:002 місця', 'total': 6}"
+  "detail": "{'ok': True, 'text': '16:002 місця', 'total': 3}"
  },
  {
   "engine": "chromium",
   "check": "выбор попал в форму",
   "ok": true,
-  "detail": "{'date': '2026-11-10', 'time': '13:00'}"
+  "detail": "{'date': '2026-11-13', 'time': '16:00'}"
  },
  {
   "engine": "chromium",
@@ -181,6 +193,18 @@
  },
  {
   "engine": "firefox",
+  "check": "/pricing → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
+  "check": "/order → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "firefox",
   "check": "/privacy → 200",
   "ok": true,
   "detail": "ожидали 200"
@@ -213,7 +237,7 @@
   "engine": "firefox",
   "check": "слоты: есть свободные часы",
   "ok": true,
-  "detail": "6"
+  "detail": "3"
  },
  {
   "engine": "firefox",
@@ -231,7 +255,7 @@
   "engine": "firefox",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 550, h1 вес 800"
+  "detail": "правил 608, h1 вес 800"
  },
  {
   "engine": "firefox",
@@ -273,19 +297,19 @@
   "engine": "firefox",
   "check": "день выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': 'Сьогодні10.1112 віль', 'total': 12}"
+  "detail": "{'ok': True, 'text': 'Сьогодні13.116 вільн', 'total': 12}"
  },
  {
   "engine": "firefox",
   "check": "час выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': '13:002 місця', 'total': 6}"
+  "detail": "{'ok': True, 'text': '16:002 місця', 'total': 3}"
  },
  {
   "engine": "firefox",
   "check": "выбор попал в форму",
   "ok": true,
-  "detail": "{'date': '2026-11-10', 'time': '13:00'}"
+  "detail": "{'date': '2026-11-13', 'time': '16:00'}"
  },
  {
   "engine": "firefox",
@@ -331,6 +355,18 @@
  },
  {
   "engine": "webkit",
+  "check": "/pricing → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
+  "check": "/order → 200",
+  "ok": true,
+  "detail": "ожидали 200"
+ },
+ {
+  "engine": "webkit",
   "check": "/privacy → 200",
   "ok": true,
   "detail": "ожидали 200"
@@ -363,7 +399,7 @@
   "engine": "webkit",
   "check": "слоты: есть свободные часы",
   "ok": true,
-  "detail": "6"
+  "detail": "3"
  },
  {
   "engine": "webkit",
@@ -381,7 +417,7 @@
   "engine": "webkit",
   "check": "CSS загрузился (правила + жирность заголовка)",
   "ok": true,
-  "detail": "правил 550, h1 вес 800"
+  "detail": "правил 608, h1 вес 800"
  },
  {
   "engine": "webkit",
@@ -423,19 +459,19 @@
   "engine": "webkit",
   "check": "день выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': 'Сьогодні10.1112 віль', 'total': 12}"
+  "detail": "{'ok': True, 'text': 'Сьогодні13.116 вільн', 'total': 12}"
  },
  {
   "engine": "webkit",
   "check": "час выбирается кликом",
   "ok": true,
-  "detail": "{'ok': True, 'text': '13:002 місця', 'total': 6}"
+  "detail": "{'ok': True, 'text': '16:002 місця', 'total': 3}"
  },
  {
   "engine": "webkit",
   "check": "выбор попал в форму",
   "ok": true,
-  "detail": "{'date': '2026-11-10', 'time': '13:00'}"
+  "detail": "{'date': '2026-11-13', 'time': '16:00'}"
  },
  {
   "engine": "webkit",

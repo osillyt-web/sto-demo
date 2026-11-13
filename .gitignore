@@ -3,6 +3,7 @@ data/
 .env
 __pycache__/
 *.pyc
+pwenv/
 
 # временные файлы и старые версии
 assets_tmp/
@@ -25,3 +26,7 @@ tools/vnu_report.json
 tools/axe_report.json
 tunnel.log
 server.log
+
+# внутренние аудиты — не публикуются
+AUDIT/
+xb.txt

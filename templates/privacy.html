@@ -10,6 +10,7 @@
 <link rel="canonical" href="{{SITE_URL}}/privacy">
 <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<script defer src="/static/demo-banner.js?v={{ASSET_V}}"></script>
 </head>
 <body>
 
@@ -24,6 +25,14 @@
     </div>
   </div>
 </header>
+<div class="demo-bar" role="region" aria-label="Демонстраційний сайт — повідомлення">
+  <div class="wrap demo-bar-inner">
+    <span class="demo-dot" aria-hidden="true">i</span>
+    <span class="demo-bar-copy"><b>Це демо.</b> Потрібен сайт або Telegram-бот для вашого бізнесу?</span>
+    <a class="demo-bar-cta" href="/order#directions">Переглянути варіанти</a>
+    <button class="demo-bar-close" type="button" aria-label="Закрити повідомлення" title="Закрити повідомлення">×</button>
+  </div>
+</div>
 
 <main class="section">
   <div class="wrap legal">

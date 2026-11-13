@@ -103,6 +103,7 @@ td a:hover{color:var(--accent)}
 .cal-lead .sub-line{font-size:12px;color:var(--muted)}
 .slot-cell{color:var(--text);font-weight:650}
 .badge.cb{background:rgba(42,171,238,.16);color:#7cc6ff;border-color:rgba(42,171,238,.4)}
+.badge.form{background:rgba(155,120,255,.16);color:#b9a3ff;border-color:rgba(155,120,255,.42)}
 
 /* ---- форма контактов ---- */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
