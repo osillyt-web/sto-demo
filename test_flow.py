@@ -476,9 +476,9 @@ status, _, _ = get_soft("/brands/no-such-brand")
 check("невідома марка = 404", status == 404)
 
 _, sm, _ = get("/sitemap.xml")
-check("sitemap: 19 адрес, включая страницу заказа, услуги и марки",
-      sm.count("<loc>") == 19 and "/services/to" in sm and "/brands/skoda" in sm
-      and "/pricing" in sm and "/order" in sm, sm.count("<loc>"))
+check("sitemap: 20 адрес, включая страницу заказа, услуги, марки и отзывы",
+      sm.count("<loc>") == 20 and "/services/to" in sm and "/brands/skoda" in sm
+      and "/pricing" in sm and "/order" in sm and "/reviews" in sm, sm.count("<loc>"))
 
 # ---------- напоминание о записи ----------
 _, days_raw, _ = get("/api/slots/days")

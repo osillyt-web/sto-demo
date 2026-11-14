@@ -24,12 +24,13 @@ import sqlite3
 import secrets
 import datetime
 import mimetypes
+import socket
 import threading
 import smtplib
 import urllib.request
 from email.message import EmailMessage
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs, unquote, quote
+from urllib.parse import urlparse, urlsplit, parse_qs, unquote, quote
 
 from content import SERVICES, BRANDS, SERVICE_SLUG_BY_TITLE
 import seo_pages
@@ -68,8 +69,8 @@ except AttributeError:                # на Windows этой функции н�
     pass
 
 DATA_DIR = os.path.join(BASE, "data")
-DB_PATH = os.path.join(DATA_DIR, "sto.db")
-AUTH_PATH = os.path.join(DATA_DIR, "auth.json")
+DB_PATH = os.environ.get("STO_DB") or os.path.join(DATA_DIR, "sto.db")
+AUTH_PATH = os.environ.get("STO_AUTH") or os.path.join(DATA_DIR, "auth.json")
 INITIAL_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 PORT = int(os.environ.get("PORT", "8000"))
 # локально слушаем только 127.0.0.1; на хостинге (Render) задаётся HOST=0.0.0.0
@@ -87,6 +88,8 @@ ATTEMPT_LIMIT = int(os.environ.get("ATTEMPT_LIMIT", "200"))  # любых обр
 
 BACKUPS_DIR = os.path.join(BASE, "backups")
 ERRORS_LOG = os.path.join(DATA_DIR, "errors.log")
+MAX_BODY_BYTES = 64 * 1024      # предел тела запроса: больше — ответ 413
+READ_TIMEOUT_S = 15             # предел ожидания тела, иначе медленный клиент держит поток
 SECURITY_LOG = os.path.join(DATA_DIR, "security.log")
 VERSION = "3.2"
 STARTED_AT = datetime.datetime.now()
@@ -799,6 +802,7 @@ def backup_loop():
 def reminder_loop():
     """Раз в 15 минут: заявка на завтра-сегодня без подтверждения → напомнить владельцу."""
     while True:
+        conn = None
         try:
             conn = get_db()
             now = datetime.datetime.now()
@@ -808,7 +812,8 @@ def reminder_loop():
             for lead in rows:
                 try:
                     dt = datetime.datetime.strptime(f"{lead['slot_date']} {lead['slot_time']}", "%Y-%m-%d %H:%M")
-                except Exception:
+                except Exception as exc:
+                    write_error("reminder: заявка %s — некорректная дата %r", lead["id"], exc)
                     continue
                 hours = (dt - now).total_seconds() / 3600
                 if 1 <= hours <= 26:
@@ -816,9 +821,14 @@ def reminder_loop():
                     if ok:
                         conn.execute("UPDATE leads SET reminded=1 WHERE id=?", (lead["id"],))
                         conn.commit()
-            conn.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            write_error("reminder_loop: %r", exc)
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception as exc:
+                    write_error("reminder_loop: закрытие базы — %r", exc)
         time.sleep(900)
 
 
@@ -830,16 +840,23 @@ def login_page(error=""):
     """Страница входа. Подсказка про демо-пароль показывается только пока пароль демонстрационный."""
     hint = ""
     if is_default_password():
-        hint = ('<form class="demo-login" method="post" action="/admin/login">'
-                '<input type="hidden" name="password" value="' + esc(INITIAL_PASSWORD) + '">'
-                '<button class="btn btn-accent btn-wide" type="submit">Увійти з демо-паролем</button>'
-                '</form>'
-                '<p class="hint">Пароль: <b>' + esc(INITIAL_PASSWORD) + '</b> · '
-                'змінюється в панелі або змінною ADMIN_PASSWORD</p>')
+        # Пароль на странице не показываем: подсказка раскрывала значение всему интернету.
+        hint = ('<p class="hint">Демо-режим: пароль задається змінною ADMIN_PASSWORD '
+                'і змінюється в панелі після входу.</p>')
     return (tpl("login.html")
             .replace("{{ERROR}}", error)
             .replace("{{DEMO_HINT}}", hint))
 
+
+
+def write_error(fmt, *args):
+    """Ошибки пишем в data/errors.log: на хостинге stdout теряется."""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(ERRORS_LOG, "a", encoding="utf-8") as fh:
+            fh.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} " + (fmt % args) + "\n")
+    except Exception:
+        pass
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -849,11 +866,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_error(self, fmt, *args):
         """Ошибки пишем в data/errors.log — иначе на хостинге они теряются."""
-        try:
-            with open(ERRORS_LOG, "a", encoding="utf-8") as fh:
-                fh.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} " + (fmt % args) + "\n")
-        except Exception:
-            pass
+        write_error(fmt, *args)
         return super().log_error(fmt, *args)
 
     # ------------------------------------------------------------ служебное
@@ -900,15 +913,49 @@ class Handler(BaseHTTPRequestHandler):
         self.send(302, "", extra=extra)
 
     def body(self):
-        n = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(n).decode("utf-8", "replace") if n else ""
+        """Тело запроса с пределами: размер, время ожидания, корректность JSON и типов.
+
+        Возвращает словарь или None — во втором случае ответ клиенту уже отправлен.
+        """
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except (TypeError, ValueError):
+            self.json_out({"error": "Некоректна довжина тіла"}, 400)
+            return None
+        if n < 0:
+            self.json_out({"error": "Некоректна довжина тіла"}, 400)
+            return None
+        if n > MAX_BODY_BYTES:
+            self.close_connection = True
+            self.json_out({"error": "Занадто великий запит", "limit": MAX_BODY_BYTES}, 413)
+            return None
+        try:
+            self.connection.settimeout(READ_TIMEOUT_S)
+        except OSError:
+            pass
+        try:
+            raw = self.rfile.read(n).decode("utf-8", "replace") if n else ""
+        except (socket.timeout, TimeoutError):
+            self.close_connection = True
+            self.json_out({"error": "Час очікування вичерпано"}, 408)
+            return None
         ctype = self.headers.get("Content-Type") or ""
         # sendBeacon с обычной строкой приходит как text/plain — тело всё равно JSON
         if ctype.startswith("application/json") or raw.lstrip().startswith("{"):
             try:
-                return json.loads(raw or "{}")
+                parsed = json.loads(raw or "{}")
             except json.JSONDecodeError:
-                return {}
+                self.json_out({"error": "Некоректний JSON"}, 400)
+                return None
+            if not isinstance(parsed, dict):
+                self.json_out({"error": "Очікується об'єкт JSON"}, 400)
+                return None
+            bad = [k for k, v in parsed.items()
+                   if v is not None and not isinstance(v, (str, int, float, bool))]
+            if bad:
+                self.json_out({"error": "Некоректний тип поля: " + str(bad[0])[:40]}, 400)
+                return None
+            return parsed
         return {k: v[0] for k, v in parse_qs(raw).items()}
 
     def ip(self):
@@ -970,11 +1017,34 @@ class Handler(BaseHTTPRequestHandler):
         return self.send(404, "not found", "text/plain; charset=utf-8")
 
     def same_origin(self):
-        """CSRF-барьер: изменяющие запросы с чужого Origin не проходят."""
-        origin = self.headers.get("Origin")
+        """CSRF-барьер: изменяющие запросы с чужого Origin не проходят.
+
+        Сравниваем имя хоста и порт точно. Прежняя проверка `origin.endswith(host)`
+        пропускала чужие домены с тем же окончанием, например evil-osillytweb.alwaysdata.net.
+        """
+        origin = (self.headers.get("Origin") or "").strip()
         if not origin:
             return True
-        return origin.endswith(self.headers.get("Host") or "\0")
+        host = (self.headers.get("Host") or "").strip().lower()
+        if not host:
+            return False
+        parts = urlsplit(origin)
+        if parts.scheme not in ("http", "https") or not parts.hostname:
+            return False
+        try:
+            origin_port = parts.port or (443 if parts.scheme == "https" else 80)
+        except ValueError:                 # порт вида «8599.evil.com» — заведомо чужой
+            return False
+        host_name, _, host_port = host.partition(":")
+        if (parts.hostname or "").lower() != host_name:
+            return False
+        if host_port:
+            try:
+                if int(host_port) != origin_port:
+                    return False
+            except ValueError:
+                return False
+        return True
 
     STATIC_EXT = {".css", ".js", ".webp", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
                   ".woff", ".woff2", ".ttf", ".map"}
@@ -1016,6 +1086,18 @@ class Handler(BaseHTTPRequestHandler):
     JUNK_TAIL = "»«\"'`.,;:!?* \t"
 
     def do_GET(self):
+        try:
+            return self._route_get()
+        except (BrokenPipeError, ConnectionResetError):
+            raise
+        except Exception as exc:
+            write_error("do_GET %s: %r", self.path, exc)
+            try:
+                self.json_out({"error": "Помилка сервера"}, 500)
+            except Exception:
+                pass
+
+    def _route_get(self):
         u = urlparse(self.path)
         path, qs = u.path, parse_qs(u.query)
 
@@ -1423,10 +1505,24 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------ POST
     def do_POST(self):
+        try:
+            return self._route_post()
+        except (BrokenPipeError, ConnectionResetError):
+            raise
+        except Exception as exc:
+            write_error("do_POST %s: %r", self.path, exc)
+            try:
+                self.json_out({"error": "Помилка сервера"}, 500)
+            except Exception:
+                pass
+
+    def _route_post(self):
         path = urlparse(self.path).path
         if self.looks_sensitive(path):
             return self.blocked(path)
         data = self.body()
+        if data is None:                      # 413 / 400 / 408 уже отправлены клиенту
+            return
 
         if path == "/api/hit":                                   # аналитика (sendBeacon)
             if not rate_ok(HIT_HITS, self.ip(), 120, 60):
@@ -1528,50 +1624,62 @@ class Handler(BaseHTTPRequestHandler):
             slot_date = (data.get("slot_date") or "").strip()
             slot_time = (data.get("slot_time") or "").strip()
             conn = get_db()
-            if slot_date or slot_time:
-                day = parse_day(slot_date)
-                if not day or slot_time not in slot_times(conn):
-                    conn.close()
-                    return self.json_out({"ok": False, "error": "Оберіть вільний час"}, 400)
-                today = datetime.date.today()
-                if day < today or day > today + datetime.timedelta(days=SLOT_DAYS_AHEAD):
-                    conn.close()
-                    return self.json_out({"ok": False, "error": "Дата поза доступним періодом"}, 400)
-                if day.weekday() == 6:
-                    conn.close()
-                    return self.json_out({"ok": False, "error": "Неділя — за домовленістю, оберіть інший день"}, 400)
-                taken = booked_map(conn, day, day).get((day.isoformat(), slot_time), 0)
-                if taken >= slot_capacity(conn):
-                    conn.close()
-                    return self.json_out({"ok": False, "error": "Цей час щойно зайняли — оберіть інший"}, 409)
-                when_at = f"{day.strftime('%d.%m.%Y')} {slot_time}"
-            else:
-                when_at = (data.get("when_at") or "").strip()[:40]
+            try:
+                if slot_date or slot_time:
+                    day = parse_day(slot_date)
+                    if not day or slot_time not in slot_times(conn):
+                        return self.json_out({"ok": False, "error": "Оберіть вільний час"}, 400)
+                    today = datetime.date.today()
+                    if day < today or day > today + datetime.timedelta(days=SLOT_DAYS_AHEAD):
+                        return self.json_out({"ok": False, "error": "Дата поза доступним періодом"}, 400)
+                    if day.weekday() == 6:
+                        return self.json_out({"ok": False, "error": "Неділя — за домовленістю, оберіть інший день"}, 400)
+                    when_at = f"{day.strftime('%d.%m.%Y')} {slot_time}"
+                else:
+                    when_at = (data.get("when_at") or "").strip()[:40]
 
-            utm_source = (data.get("utm_source") or "").strip()[:60]
-            utm_medium = (data.get("utm_medium") or "").strip()[:60]
-            utm_campaign = (data.get("utm_campaign") or "").strip()[:60]
-            referrer = (data.get("referrer") or "").strip()[:80]
-            source = utm_source or referrer or "Прямий захід"
+                utm_source = (data.get("utm_source") or "").strip()[:60]
+                utm_medium = (data.get("utm_medium") or "").strip()[:60]
+                utm_campaign = (data.get("utm_campaign") or "").strip()[:60]
+                referrer = (data.get("referrer") or "").strip()[:80]
+                source = utm_source or referrer or "Прямий захід"
 
-            if not rate_ok(LEAD_HITS, self.ip(), LEAD_LIMIT, LEAD_WINDOW_S):
-                return self.json_out({"ok": False, "error": "Забагато заявок"}, 429)
-            lead_token = secrets.token_urlsafe(9)
-            conn.execute("""INSERT INTO leads (name, phone, service, car, when_at, comment, estimate,
-                                              source, slot_date, slot_time,
-                                              utm_source, utm_medium, utm_campaign, kind, token)
-                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                         (name[:80], phone[:30], (data.get("service") or "Зворотний дзвінок" if kind == "callback" else data.get("service") or "")[:80],
-                          (data.get("car") or "")[:80], when_at,
-                          (data.get("comment") or "")[:800],
-                          (data.get("estimate") or "")[:40], source[:80],
-                          slot_date if slot_date else "", slot_time if slot_time else "",
-                          utm_source, utm_medium, utm_campaign, kind, lead_token))
-            lead_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-            conn.execute("INSERT INTO events (name, path, session) VALUES ('lead', '/', ?)",
-                         ((data.get("sid") or "")[:32],))
-            conn.commit()
-            conn.close()
+                if not rate_ok(LEAD_HITS, self.ip(), LEAD_LIMIT, LEAD_WINDOW_S):
+                    return self.json_out({"ok": False, "error": "Забагато заявок"}, 429)
+
+                # P0: проверка вместимости и вставка — в одной транзакции с блокировкой
+                # записи. Без блокировки две одновременные заявки проходят проверку до
+                # вставки и занимают один час сверх вместимости.
+                if conn.in_transaction:
+                    conn.commit()
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    if slot_date or slot_time:
+                        taken = booked_map(conn, day, day).get((day.isoformat(), slot_time), 0)
+                        if taken >= slot_capacity(conn):
+                            conn.rollback()
+                            return self.json_out(
+                                {"ok": False, "error": "Цей час щойно зайняли — оберіть інший"}, 409)
+                    lead_token = secrets.token_urlsafe(9)
+                    conn.execute("""INSERT INTO leads (name, phone, service, car, when_at, comment, estimate,
+                                                      source, slot_date, slot_time,
+                                                      utm_source, utm_medium, utm_campaign, kind, token)
+                                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                 (name[:80], phone[:30], (data.get("service") or "Зворотний дзвінок" if kind == "callback" else data.get("service") or "")[:80],
+                                  (data.get("car") or "")[:80], when_at,
+                                  (data.get("comment") or "")[:800],
+                                  (data.get("estimate") or "")[:40], source[:80],
+                                  slot_date if slot_date else "", slot_time if slot_time else "",
+                                  utm_source, utm_medium, utm_campaign, kind, lead_token))
+                    lead_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                    conn.execute("INSERT INTO events (name, path, session) VALUES ('lead', '/', ?)",
+                                 ((data.get("sid") or "")[:32],))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    raise
+            finally:
+                conn.close()
 
             if kind == "callback":
                 notify_async(
@@ -2029,7 +2137,7 @@ if __name__ == "__main__":
         raise SystemExit(0)
     print(f"Сайт:    {SITE_URL}/")
     print(f"Адмінка: http://127.0.0.1:{PORT}/admin")
-    print(f"Пароль адмінки: {INITIAL_PASSWORD} (змінюється в адмінці, зберігається хешем)")
+    print("Пароль адмінки задається змінною ADMIN_PASSWORD і змінюється в панелі.")
     if is_default_password():
         print("УВАГА: стоїть демо-пароль. Змініть його в адмінці до показу клієнту.")
     threading.Thread(target=reminder_loop, daemon=True).start()
