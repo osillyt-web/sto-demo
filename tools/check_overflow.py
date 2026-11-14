@@ -13,7 +13,7 @@ URL = sys.argv[1] if len(sys.argv) > 1 else "https://osillytweb.alwaysdata.net/"
 
 SCRIPT = """() => {
   const out = [];
-  document.querySelectorAll('.btn, input, select, textarea, .rev-filters a, .rev-pager a, .fc-call').forEach(el => {
+  document.querySelectorAll('.btn, input, select, textarea, .rev-filters a, .rev-pager a, .fc-call, .lead-mode label, .day, .time, .model-chip, .chip').forEach(el => {
     const cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden') return;
     const r = el.getBoundingClientRect();

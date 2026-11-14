@@ -14,7 +14,8 @@ URL = sys.argv[1] if len(sys.argv) > 1 else "https://osillytweb.alwaysdata.net/"
 SCRIPT = """() => {
   const sel = 'a.btn, button.btn, .btn, .seg-btn, .rev-filters a, .rev-pager a, .rev-pager span, ' +
               'button[type=submit], .mobile-bar a, .mobile-bar button, .star-picker label, ' +
-              '.filters button, .filter, input[type=text], textarea, select';
+              '.filters button, .filter, input[type=text], textarea, select, ' +
+              '.lead-mode label, .day, .time, .model-chip, .chip';
   const out = [];
   document.querySelectorAll(sel).forEach(el => {
     const r = el.getBoundingClientRect();

@@ -38,6 +38,16 @@ def main():
         page.wait_for_timeout(1400)
         page.screenshot(path=str(OUT / "shot_book.png"))
         print("форма записи:", OUT / "shot_book.png")
+
+        # 4. элементы выбора: плитки дней и часы
+        page.evaluate("""() => {
+            const el = document.querySelector('.slot-pick') || document.getElementById('book');
+            el.scrollIntoView({block: 'start'});
+            window.scrollBy(0, 120);
+        }""")
+        page.wait_for_timeout(1400)
+        page.screenshot(path=str(OUT / "shot_slots.png"))
+        print("дни и часы:", OUT / "shot_slots.png")
         browser.close()
 
 
