@@ -21,11 +21,15 @@ import sqlite3
 import sys
 
 WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
-KYIV_SHIFT = dt.timedelta(hours=1)
 
 
-def load_visits(db_path: str, days: int, src: str | None) -> list[tuple[dt.datetime, str]]:
-    """Первое событие каждой сессии, время уже в киевском поясе."""
+def load_visits(db_path: str, days: int, src: str | None, shift_hours: int = 0) -> list[tuple[dt.datetime, str]]:
+    """Первое событие каждой сессии.
+
+    Время в базе уже киевское (server.py выставляет TZ=Europe/Kyiv при старте).
+    Параметр shift_hours нужен только для старых записей, сделанных до этой правки:
+    сервер писал их в CET, то есть на час раньше — для них shift_hours=1.
+    """
     if not os.path.exists(db_path):
         raise SystemExit(f"нет файла базы: {db_path}")
 
@@ -57,7 +61,7 @@ def load_visits(db_path: str, days: int, src: str | None) -> list[tuple[dt.datet
         if not raw:
             continue
         try:
-            stamp = dt.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S") + KYIV_SHIFT
+            stamp = dt.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S") + dt.timedelta(hours=shift_hours)
         except ValueError:
             continue
         source = (r["src"] or "").strip()
@@ -129,9 +133,11 @@ def main() -> int:
     ap.add_argument("--db", default="data/sto.db", help="путь к базе (по умолчанию data/sto.db)")
     ap.add_argument("--src", default=None, help="только заходы с этим utm_source (например, email)")
     ap.add_argument("--days", type=int, default=90, help="за сколько последних дней считать")
+    ap.add_argument("--shift-hours", type=int, default=0,
+                    help="сдвиг для старых записей (1 — данные, сделанные до перехода на киевский пояс)")
     args = ap.parse_args()
 
-    visits = load_visits(args.db, args.days, args.src)
+    visits = load_visits(args.db, args.days, args.src, args.shift_hours)
     print(render(visits, args.src))
     return 0
 

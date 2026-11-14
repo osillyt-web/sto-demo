@@ -57,6 +57,16 @@ def _load_dotenv(path):
 
 
 _load_dotenv(os.path.join(BASE, ".env"))
+
+# Часовой пояс приложения. Сервер хостинга живёт в CET (на час позже Киева), из-за чего
+# все отметки времени — заявки, журнал, аналитика — сдвигались. Ставим пояс явно,
+# чтобы время везде было местным для заказчика (Киев). Можно переопределить в .env: TZ=...
+os.environ["TZ"] = os.environ.get("TZ") or "Europe/Kyiv"
+try:
+    time.tzset()                      # пересчитать локальную зону в текущем процессе
+except AttributeError:                # на Windows этой функции нет — там пояс системный
+    pass
+
 DATA_DIR = os.path.join(BASE, "data")
 DB_PATH = os.path.join(DATA_DIR, "sto.db")
 AUTH_PATH = os.path.join(DATA_DIR, "auth.json")
