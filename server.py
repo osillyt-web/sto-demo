@@ -648,7 +648,11 @@ def login_page(error=""):
     """Страница входа. Подсказка про демо-пароль показывается только пока пароль демонстрационный."""
     hint = ""
     if is_default_password():
-        hint = ('<p class="hint">Демо-пароль: <b>' + esc(INITIAL_PASSWORD) + '</b> · '
+        hint = ('<form class="demo-login" method="post" action="/admin/login">'
+                '<input type="hidden" name="password" value="' + esc(INITIAL_PASSWORD) + '">'
+                '<button class="btn btn-accent btn-wide" type="submit">Увійти з демо-паролем</button>'
+                '</form>'
+                '<p class="hint">Пароль: <b>' + esc(INITIAL_PASSWORD) + '</b> · '
                 'змінюється в панелі або змінною ADMIN_PASSWORD</p>')
     return (tpl("login.html")
             .replace("{{ERROR}}", error)
