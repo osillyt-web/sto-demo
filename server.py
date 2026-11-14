@@ -294,6 +294,11 @@ def get_db():
     for row in conn.execute("SELECT id FROM leads WHERE token IS NULL OR token=''").fetchall():
         conn.execute("UPDATE leads SET token=? WHERE id=?",
                      (secrets.token_urlsafe(9), row["id"]))
+    # событие аналитики хранит источник перехода (utm_source), чтобы можно было отделить
+    # заходы по ссылке из письма от прочих
+    event_cols = {r["name"] for r in conn.execute("PRAGMA table_info(events)")}
+    if "src" not in event_cols:
+        conn.execute("ALTER TABLE events ADD COLUMN src TEXT DEFAULT ''")
     svc_cols = {r["name"] for r in conn.execute("PRAGMA table_info(services)")}
     for col, ddl in (("base", "ALTER TABLE services ADD COLUMN base INTEGER DEFAULT 0"),
                      ("icon", "ALTER TABLE services ADD COLUMN icon TEXT DEFAULT 'wrench'"),
@@ -1228,9 +1233,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json_out({"ok": False}, 429)
             name = re.sub(r"[^a-z_]", "", (data.get("name") or ""))[:32]
             if name:
+                src = re.sub(r"[^A-Za-z0-9_.-]", "", (data.get("src") or ""))[:32]
                 conn = get_db()
-                conn.execute("INSERT INTO events (name, path, session) VALUES (?,?,?)",
-                             (name, (data.get("path") or "")[:120], (data.get("sid") or "")[:32]))
+                conn.execute("INSERT INTO events (name, path, session, src) VALUES (?,?,?,?)",
+                             (name, (data.get("path") or "")[:120], (data.get("sid") or "")[:32], src))
                 conn.commit()
                 conn.close()
             return self.json_out({"ok": True})

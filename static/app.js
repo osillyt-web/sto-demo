@@ -466,8 +466,16 @@
     if (!s) { s = Math.random().toString(36).slice(2, 12); sessionStorage.setItem("at_sid", s); }
     return s;
   })();
+  /* источник перехода: запоминаем utm_source из адреса на всю сессию,
+     чтобы заход по ссылке из письма был виден и на внутренних страницах */
+  const utmSrc = (() => {
+    const q = new URLSearchParams(location.search).get("utm_source") || "";
+    const clean = q.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 32);
+    if (clean) sessionStorage.setItem("at_src", clean);
+    return sessionStorage.getItem("at_src") || "";
+  })();
   function hit(name) {
-    const payload = JSON.stringify({ name, path: location.pathname, sid });
+    const payload = JSON.stringify({ name, path: location.pathname, sid, src: utmSrc });
     // важно: Blob с типом application/json — иначе сервер не разберёт тело beacon-запроса
     try {
       const blob = new Blob([payload], { type: "application/json" });
