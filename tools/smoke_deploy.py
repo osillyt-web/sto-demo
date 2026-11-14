@@ -68,6 +68,15 @@ for path, needle in (("/order", "Зв’язатися письмово"), ("/pr
     text = body.decode("utf-8", "replace")
     check(f"{path} 200 и содержит «{needle}»", status == 200 and needle in text, f"{status}, {ms} c")
 
+# 3б. страница отзывов: сетка, форма и скрипт
+status, body, ms, _ = fetch("/reviews")
+rev = body.decode("utf-8", "replace")
+check("/reviews 200 и содержит «Відгуки клієнтів»", status == 200 and "Відгуки клієнтів" in rev, f"{status}, {ms} c")
+check("на /reviews есть форма отзыва", 'id="rev-form"' in rev and 'name="consent"' in rev)
+check("скрипт формы отзывов отдаётся", "/static/reviews.js" in rev)
+status, body, _, _ = fetch("/sitemap.xml")
+check("sitemap содержит /reviews", b"/reviews" in body)
+
 # 4. форма заявки на месте
 status, body, _, _ = fetch("/order")
 order_html = body.decode("utf-8", "replace")
