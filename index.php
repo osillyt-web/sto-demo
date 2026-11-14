@@ -84,6 +84,11 @@ foreach ($_SERVER as $key => $value) {
 if (!empty($_SERVER['CONTENT_TYPE'])) {
     $forward[] = 'Content-Type: ' . $_SERVER['CONTENT_TYPE'];
 }
+// Исходный Host: приложение сверяет его с Origin как защиту от CSRF.
+// Без этого заголовка Python видит только 127.0.0.1:8500 и отвечает 403 на изменение данных.
+if (!empty($_SERVER['HTTP_HOST'])) {
+    $forward[] = 'Host: ' . $_SERVER['HTTP_HOST'];
+}
 $forward[] = 'X-Forwarded-Proto: https';
 if (!empty($_SERVER['REMOTE_ADDR'])) {
     $forward[] = 'X-Forwarded-For: ' . $_SERVER['REMOTE_ADDR'];
