@@ -191,3 +191,18 @@ td a:hover{color:var(--accent)}
     background:linear-gradient(90deg,rgba(16,21,29,0),rgba(16,21,29,.96))}
 }
 @media (prefers-reduced-motion:reduce){ .adm-nav-list a{transition:none} }
+
+/* ---------- отзывы с сайта (модерация) ---------- */
+.pill{display:inline-block;margin-left:8px;padding:3px 10px;border-radius:99px;
+  background:rgba(255,138,58,.16);border:1px solid rgba(255,138,58,.45);
+  color:#ffb27a;font-size:12.5px;vertical-align:middle}
+.rev-item{display:grid;gap:10px;padding:16px;border:1px solid var(--line);border-radius:12px;
+  background:var(--card);margin-bottom:10px}
+.rev-item .rev-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rev-item .rev-stars{color:#ffb43a;letter-spacing:2px;font-size:15px}
+.rev-item .rev-who{font-weight:600;font-size:14.5px}
+.rev-item .rev-meta{color:var(--muted);font-size:13px;margin-left:auto}
+.rev-item .rev-text{margin:0;font-size:14.5px;line-height:1.6;color:#dbe1ea}
+.rev-item .rev-btns{display:flex;gap:8px;flex-wrap:wrap}
+.rev-item.pending{border-left:3px solid rgba(255,138,58,.7)}
+.rev-item.published{border-left:3px solid rgba(99,212,113,.6)}

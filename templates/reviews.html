@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>Відгуки клієнтів — АвтоКрапка</title>
+<meta name="description" content="Відгуки клієнтів про ремонт і обслуговування авто: роботи, ціни, строки. Залиште свій відгук — він з'явиться на сайті після перевірки.">
+<meta name="theme-color" content="#0a0c10">
+<link rel="canonical" href="{{SITE_URL}}/reviews">
+<meta property="og:title" content="Відгуки клієнтів — АвтоКрапка">
+<meta property="og:description" content="Що кажуть клієнти про роботи, ціни та строки. Залиште свій відгук.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{SITE_URL}}/reviews">
+<meta property="og:locale" content="uk_UA">
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+<link rel="stylesheet" href="/static/style.css?v={{ASSET_V}}">
+<script defer src="/static/demo-banner.js?v={{ASSET_V}}"></script>
+</head>
+<body class="cases-page">
+
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark">АК</span>
+      <span class="brand-text"><b>АвтоКрапка</b><small>портфоліо</small></span>
+    </a>
+    <nav class="nav">
+      <a href="/cases">Портфоліо</a>
+      <a href="/pricing">Тарифи</a>
+      <a href="/reviews" aria-current="page">Відгуки</a>
+    </nav>
+    <div class="top-actions">
+      <a class="btn btn-ghost" href="/">Сайт</a>
+      <a class="btn btn-accent" href="/order">Обговорити</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <h1>Відгуки клієнтів</h1>
+          {{STATS}}
+        </div>
+      </div>
+
+      {{FILTER}}
+
+      <div class="rev-grid">
+        {{REVIEWS_GRID}}
+      </div>
+
+      {{PAGER}}
+    </div>
+  </section>
+
+  <section class="section section-alt" id="leave">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <h2>Залишити відгук</h2>
+          <p class="sub">Відгук з'явиться на сайті після перевірки — зазвичай протягом дня.
+            Посилання та реклама у відгуках не публікуються.</p>
+        </div>
+      </div>
+
+      <form class="rev-form" id="rev-form" novalidate>
+        <div class="rev-row">
+          <label class="field">
+            <span>Ваше ім'я</span>
+            <input type="text" name="name" maxlength="40" required placeholder="Наприклад, Олена К.">
+          </label>
+          <label class="field">
+            <span>Марка авто <em>(не обов'язково)</em></span>
+            <input type="text" name="car" maxlength="40" placeholder="Наприклад, Skoda Octavia">
+          </label>
+        </div>
+
+        <fieldset class="rev-stars">
+          <legend>Оцінка</legend>
+          <div class="star-picker" role="radiogroup" aria-label="Оцінка від 1 до 5">
+            <input type="radio" name="stars" id="st5" value="5" checked><label for="st5">★</label>
+            <input type="radio" name="stars" id="st4" value="4"><label for="st4">★</label>
+            <input type="radio" name="stars" id="st3" value="3"><label for="st3">★</label>
+            <input type="radio" name="stars" id="st2" value="2"><label for="st2">★</label>
+            <input type="radio" name="stars" id="st1" value="1"><label for="st1">★</label>
+          </div>
+        </fieldset>
+
+        <label class="field">
+          <span>Відгук</span>
+          <textarea name="text" rows="5" maxlength="800" required
+            placeholder="Що робили, скільки чекали, чи збіглася ціна з обіцяною"></textarea>
+          <small class="hint">Від 20 до 800 символів. Своє ім'я вказуйте так, як хочете бачити його на сайті.</small>
+        </label>
+
+        <!-- ловушка для ботов: люди це поле не бачать і не заповнюють -->
+        <div class="rev-trap" aria-hidden="true">
+          <label>Сайт<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+
+        <label class="rev-consent">
+          <input type="checkbox" name="consent" required>
+          <span>Погоджуюсь на публікацію імені та тексту відгуку на сайті.</span>
+        </label>
+
+        <div class="rev-actions">
+          <button class="btn btn-accent" type="submit">Надіслати відгук</button>
+          <span class="rev-status" id="rev-status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <div>
+      <a class="brand" href="/">
+        <span class="brand-mark">АК</span>
+        <span class="brand-text"><b>АвтоКрапка</b><small>портфоліо та демо</small></span>
+      </a>
+      <p class="mini">Демонстраційні проєкти для портфоліо. Дані клієнтів і телефони — вигадані.</p>
+    </div>
+    <div>
+      <b>Сторінки</b>
+      <a href="/">Головна</a>
+      <a href="/cases">Портфоліо</a>
+      <a href="/pricing">Тарифи</a>
+      <a href="/reviews">Відгуки</a>
+    </div>
+    <div>
+      <b>Інформація</b>
+      <a href="/privacy">Політика конфіденційності</a>
+      <a href="/sitemap.xml">Карта сайту</a>
+    </div>
+  </div>
+  <div class="wrap foot-bottom">
+    <span>© {{YEAR}} АвтоКрапка. Демо-сайт для портфоліо.</span>
+    <span>Зроблено з увагою до деталей</span>
+  </div>
+</footer>
+
+<script defer src="/static/reviews.js?v={{ASSET_V}}"></script>
+</body>
+</html>

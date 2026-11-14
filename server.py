@@ -96,6 +96,7 @@ LOGIN_TRIES = {}       # ip -> [время неудачных попыток]
 LEAD_HITS = {}         # ip -> [время принятых заявок]
 ATTEMPT_HITS = {}      # ip -> [время любых обращений к форме]
 HIT_HITS = {}          # ip -> [время событий аналитики]
+REVIEW_HITS = {}       # ip -> [время присланных отзывов]
 
 CLASSES = {
     "a": ("Легкове / універсал", 1.0),
@@ -140,6 +141,157 @@ REVIEWS = [
      "Приїхав зі стуком у підвісці. Знайшли за 20 хвилин, показали на підйомнику. "
      "Замінили тільки те, що треба — не нав'язували комплекс."),
 ]
+
+# ------------------------------------------------------------- отзывы посетителей
+# Отзыв, присланный с сайта, попадает в базу со статусом 'pending' и виден на сайте
+# только после одобрения в админке: иначе через месяц в блоке будет реклама.
+REVIEWS_PER_PAGE = 12          # сколько отзывов на страницу /reviews
+REVIEW_TEXT_MIN = 20
+REVIEW_TEXT_MAX = 800
+REVIEW_NAME_MAX = 40
+REVIEW_CAR_MAX = 40
+URL_IN_TEXT_RE = re.compile(r"(https?://|www\.|\.com|\.ua\b|\.net|\.org|t\.me/|@[a-z0-9-]{3,}\.)", re.I)
+
+
+def review_problem(name: str, text: str, stars: int, car: str = "") -> str:
+    """Проверка присланного отзыва. Возвращает текст ошибки или пустую строку."""
+    if not 2 <= len(name) <= REVIEW_NAME_MAX:
+        return f"Ім'я — від 2 до {REVIEW_NAME_MAX} символів"
+    if not REVIEW_TEXT_MIN <= len(text) <= REVIEW_TEXT_MAX:
+        return f"Текст відгуку — від {REVIEW_TEXT_MIN} до {REVIEW_TEXT_MAX} символів"
+    if not 1 <= stars <= 5:
+        return "Оцінка — від 1 до 5 зірок"
+    if len(car) > REVIEW_CAR_MAX:
+        return f"Марка авто — до {REVIEW_CAR_MAX} символів"
+    if URL_IN_TEXT_RE.search(name) or URL_IN_TEXT_RE.search(text) or URL_IN_TEXT_RE.search(car):
+        return "Посилання у відгуку заборонені"
+    return ""
+
+
+def reviews_published(conn, limit: int, offset: int = 0, stars: int = 0) -> list:
+    """Одобренные отзывы: свежие сверху, при желании — только с заданной оценкой."""
+    sql = "SELECT * FROM reviews WHERE status='published'"
+    args: list = []
+    if stars:
+        sql += " AND stars=?"
+        args.append(stars)
+    sql += " ORDER BY id DESC LIMIT ? OFFSET ?"
+    args += [limit, offset]
+    return [dict(r) for r in conn.execute(sql, args)]
+
+
+def reviews_stats(conn) -> dict:
+    """Сколько одобренных отзывов и какая средняя оценка."""
+    row = conn.execute("SELECT COUNT(*) AS n, AVG(stars) AS avg FROM reviews "
+                       "WHERE status='published'").fetchone()
+    n = row["n"] or 0
+    return {"count": n, "avg": round(row["avg"], 1) if row["avg"] else 0}
+
+
+def review_card_html(r: dict) -> str:
+    """Карточка отзыва для сайта. Одинаковая на главной и на странице /reviews."""
+    stars = int(r.get("stars") or 5)
+    who = esc(r.get("name") or "")
+    car = esc(r.get("car") or "")
+    body = esc(r.get("text") or "")
+    tail = f"{who} · <span>{car}</span>" if car else who
+    return (f'<article class="review" data-reveal>\n'
+            f'  <h3 class="sr-only">Відгук клієнта: {who}</h3>\n'
+            f'  <div class="stars" role="img" aria-label="Оцінка {stars} з 5">{"★" * stars}</div>\n'
+            f'  <p>«{body}»</p>\n'
+            f'  <footer>{tail}</footer>\n'
+            f'</article>')
+
+
+def render_reviews_page(u) -> str:
+    """Страница /reviews: компактная сетка по 12, фильтр по оценке, страницы, форма.
+
+    Размер страницы не зависит от числа отзывов: из базы берётся только одна
+    страница, поэтому и при 10, и при 1000 отзывов она грузится одинаково.
+    """
+    qs = parse_qs(u.query or "")
+    try:
+        page_no = max(1, int((qs.get("page") or ["1"])[0]))
+    except (TypeError, ValueError):
+        page_no = 1
+    try:
+        stars = int((qs.get("stars") or ["0"])[0])
+    except (TypeError, ValueError):
+        stars = 0
+    if stars not in (1, 2, 3, 4, 5):
+        stars = 0
+
+    conn = get_db()
+    try:
+        stats = reviews_stats(conn)
+        by_stars = {int(r["stars"]): r["n"] for r in
+                    conn.execute("SELECT stars, COUNT(*) AS n FROM reviews "
+                                 "WHERE status='published' GROUP BY stars")}
+        total = by_stars.get(stars, 0) if stars else stats["count"]
+        pages = max(1, (total + REVIEWS_PER_PAGE - 1) // REVIEWS_PER_PAGE)
+        page_no = min(page_no, pages)
+        items = reviews_published(conn, REVIEWS_PER_PAGE, (page_no - 1) * REVIEWS_PER_PAGE, stars)
+    finally:
+        conn.close()
+
+    demo = stats["count"] == 0      # пока ни один отзыв не одобрен — показываем примеры
+    if demo:
+        items = [{"name": w, "car": c, "stars": n, "text": t} for w, c, n, t in REVIEWS]
+        total, pages = len(items), 1
+
+    grid = "\n".join(review_card_html(r) for r in items)
+    if not grid:
+        grid = ('<p class="rev-empty">За цим фільтром відгуків ще немає. '
+                '<a href="/reviews">Показати всі</a></p>')
+
+    if demo:
+        stats_html = ('<p class="sub">Відгуки, імена й оцінки — демонстраційні: показують, '
+                      'як виглядатиме цей розділ на сайті СТО.</p>')
+    else:
+        stats_html = (f'<div class="rev-stats">'
+                      f'<div class="rev-score">{stats["avg"]}<small>з 5 — середня оцінка</small></div>'
+                      f'<p class="sub" style="margin:0">На основі {stats["count"]} '
+                      f'відгуків клієнтів. Свіжі — зверху.</p></div>')
+
+    # фильтр по оценке: показываем только те оценки, по которым есть отзывы
+    filter_html = ""
+    if not demo and stats["count"]:
+        cur_all = ' aria-current="true"' if not stars else ""
+        chips = [f'<a href="/reviews"{cur_all}>Усі ({stats["count"]})</a>']
+        for s in (5, 4, 3, 2, 1):
+            if by_stars.get(s):
+                cur = ' aria-current="true"' if stars == s else ""
+                chips.append(f'<a href="/reviews?stars={s}"{cur}>{s} ★ ({by_stars[s]})</a>')
+        filter_html = '<nav class="rev-filters" aria-label="Фільтр за оцінкою">' + "".join(chips) + '</nav>'
+
+    pager_html = ""
+    if pages > 1:
+        tail = f"&stars={stars}" if stars else ""
+        parts = []
+        if page_no > 1:
+            parts.append(f'<a href="/reviews?page={page_no - 1}{tail}" rel="prev">‹ Назад</a>')
+        for p in range(1, pages + 1):
+            if p == page_no:
+                parts.append(f'<a href="/reviews?page={p}{tail}" aria-current="page">{p}</a>')
+            elif p <= 2 or p > pages - 2 or abs(p - page_no) <= 1:
+                parts.append(f'<a href="/reviews?page={p}{tail}">{p}</a>')
+            elif abs(p - page_no) == 2:
+                parts.append('<span>…</span>')
+        if page_no < pages:
+            parts.append(f'<a href="/reviews?page={page_no + 1}{tail}" rel="next">Далі ›</a>')
+        pager_html = (f'<nav class="rev-pager" aria-label="Сторінки відгуків">'
+                      f'{"".join(parts)}</nav>'
+                      f'<p class="sub" style="margin-top:10px">Показано '
+                      f'{(page_no - 1) * REVIEWS_PER_PAGE + 1}–'
+                      f'{min(page_no * REVIEWS_PER_PAGE, total)} із {total}</p>')
+
+    return (tpl("reviews.html")
+            .replace("{{STATS}}", stats_html)
+            .replace("{{FILTER}}", filter_html)
+            .replace("{{REVIEWS_GRID}}", grid)
+            .replace("{{PAGER}}", pager_html)
+            .replace("{{SITE_URL}}", SITE_URL)
+            .replace("{{YEAR}}", str(datetime.date.today().year)))
 
 # ----------------------------------------------------------------- слоты запису
 
@@ -282,7 +434,18 @@ def get_db():
     conn.execute("""CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT DEFAULT '')""")
+    # отзывы, присланные посетителями: попадают на сайт только после модерации в админке
+    conn.execute("""CREATE TABLE IF NOT EXISTS reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        car TEXT DEFAULT '',
+        stars INTEGER DEFAULT 5,
+        text TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        ip TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_name ON events(name, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at)")
 
     # мягкие миграции старых баз
     lead_cols = {r["name"] for r in conn.execute("PRAGMA table_info(leads)")}
@@ -885,6 +1048,9 @@ class Handler(BaseHTTPRequestHandler):
                     .replace("{{C_TELEGRAM}}", esc(pc["telegram"]))
                     .replace("{{C_VIBER}}", esc(pc["viber"])))
             return self.send(200, page, cache="public, max-age=600")
+        if path == "/reviews":
+            # все отзывы: компактная сетка со страницами и фильтром по оценке
+            return self.send(200, render_reviews_page(u), cache="public, max-age=300")
         if path == "/pricing":
             conn = get_db()
             try:
@@ -1020,6 +1186,8 @@ class Handler(BaseHTTPRequestHandler):
                     "<changefreq>monthly</changefreq><priority>0.7</priority></url>\n"
                     f"  <url><loc>{SITE_URL}/order</loc><lastmod>{today}</lastmod>"
                     "<changefreq>monthly</changefreq><priority>0.7</priority></url>\n"
+                    f"  <url><loc>{SITE_URL}/reviews</loc><lastmod>{today}</lastmod>"
+                    "<changefreq>weekly</changefreq><priority>0.6</priority></url>\n"
                     + "".join(
                         f"  <url><loc>{SITE_URL}/services/{slug}</loc><lastmod>{today}</lastmod>"
                         "<changefreq>monthly</changefreq><priority>0.8</priority></url>\n"
@@ -1153,6 +1321,24 @@ class Handler(BaseHTTPRequestHandler):
             }
             conn.close()
             return self.json_out({"leads": rows, "stats": stats})
+        if path == "/api/admin/reviews":
+            if not self.session_ok():
+                return self.json_out({"error": "auth"}, 401)
+            status = (qs.get("status") or ["pending"])[0]
+            sql = "SELECT * FROM reviews"
+            args: list = []
+            if status in ("pending", "published"):
+                sql += " WHERE status=?"
+                args.append(status)
+            sql += " ORDER BY id DESC LIMIT 500"
+            conn = get_db()
+            rows = [dict(r) for r in conn.execute(sql, args)]
+            stats = {
+                "pending": conn.execute("SELECT COUNT(*) FROM reviews WHERE status='pending'").fetchone()[0],
+                "published": conn.execute("SELECT COUNT(*) FROM reviews WHERE status='published'").fetchone()[0],
+            }
+            conn.close()
+            return self.json_out({"reviews": rows, "stats": stats})
         if path == "/api/admin/services":
             if not self.session_ok():
                 return self.json_out({"error": "auth"}, 401)
@@ -1250,6 +1436,41 @@ class Handler(BaseHTTPRequestHandler):
                 conn.commit()
                 conn.close()
             return self.json_out({"ok": True})
+
+        if path == "/api/review":                                 # отзыв посетителя (с модерацией)
+            if not rate_ok(REVIEW_HITS, self.ip(), 3, 3600):
+                return self.json_out({"ok": False,
+                                      "error": "Забагато відгуків з цієї адреси. Спробуйте за годину."}, 429)
+            # ловушка для ботов: скрытое поле заполнено — молча делаем вид, что приняли
+            if (data.get("website") or "").strip():
+                return self.json_out({"ok": True, "pending": True})
+            if not str(data.get("consent", "")).lower() in ("1", "true", "on", "yes"):
+                return self.json_out({"ok": False,
+                                      "error": "Потрібна згода на публікацію імені та тексту"}, 400)
+            name = re.sub(r"\s+", " ", (data.get("name") or "")).strip()[:REVIEW_NAME_MAX]
+            car = re.sub(r"\s+", " ", (data.get("car") or "")).strip()[:REVIEW_CAR_MAX]
+            text = (data.get("text") or "").strip()[:REVIEW_TEXT_MAX]
+            try:
+                stars = int(data.get("stars") or 5)
+            except (TypeError, ValueError):
+                stars = 5
+            problem = review_problem(name, text, stars, car)
+            if problem:
+                return self.json_out({"ok": False, "error": problem}, 400)
+            conn = get_db()
+            try:
+                conn.execute("INSERT INTO reviews (name, car, stars, text, status, ip) "
+                             "VALUES (?,?,?,?, 'pending', ?)", (name, car, stars, text, self.ip()))
+                conn.commit()
+                rid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            finally:
+                conn.close()
+            notify_async("⭐ <b>Новий відгук на сайті</b>\n\n"
+                         f"{'★' * stars}\n"
+                         f"👤 {esc(name)}" + (f" · {esc(car)}" if car else "") + "\n"
+                         f"💬 {esc(text[:300])}\n\n"
+                         f"Відгук №{rid} чекає перевірки: {SITE_URL}/admin")
+            return self.json_out({"ok": True, "pending": True, "id": rid})
 
         if path.startswith("/r/") and (path.endswith("/confirm") or path.endswith("/cancel")):
             parts = path.strip("/").split("/")
@@ -1568,6 +1789,36 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
             return self.json_out({"ok": True, "removed": removed})
 
+        if path == "/admin/review":
+            # модерация отзывов: одобрить, снять с публикации или удалить
+            if not self.session_ok():
+                return self.json_out({"error": "auth"}, 401)
+            action = (data.get("action") or "").strip()
+            try:
+                rid = int(data.get("id") or 0)
+            except (TypeError, ValueError):
+                rid = 0
+            if action not in ("approve", "hide", "delete") or not rid:
+                return self.json_out({"ok": False, "error": "Невірна дія"}, 400)
+            conn = get_db()
+            try:
+                row = conn.execute("SELECT name FROM reviews WHERE id=?", (rid,)).fetchone()
+                if not row:
+                    return self.json_out({"ok": False, "error": "Відгук не знайдено"}, 404)
+                if action == "approve":
+                    conn.execute("UPDATE reviews SET status='published' WHERE id=?", (rid,))
+                    ops.audit(conn, "відгук опубліковано", f"#{rid} {row['name']}")
+                elif action == "hide":
+                    conn.execute("UPDATE reviews SET status='pending' WHERE id=?", (rid,))
+                    ops.audit(conn, "відгук знято з публікації", f"#{rid} {row['name']}")
+                else:
+                    conn.execute("DELETE FROM reviews WHERE id=?", (rid,))
+                    ops.audit(conn, "відгук видалено", f"#{rid} {row['name']}")
+                conn.commit()
+            finally:
+                conn.close()
+            return self.json_out({"ok": True})
+
         return self.send(404, "Не знайдено")
 
     # ------------------------------------------------------------ аналитика
@@ -1659,12 +1910,34 @@ class Handler(BaseHTTPRequestHandler):
           <figcaption><b>{esc(cap)}</b><span>{esc(sub)}</span></figcaption>
         </figure>""" for name, cap, sub in gallery)
 
-        reviews = "\n".join(f"""<article class="review" data-reveal>
-          <h3 class="sr-only">Відгук клієнта: {esc(who)}</h3>
-          <div class="stars" role="img" aria-label="Оцінка {n} з 5">{'★' * n}</div>
-          <p>«{esc(text)}»</p>
-          <footer>{esc(who)} · <span>{esc(car)}</span></footer>
-        </article>""" for who, car, n, text in REVIEWS)
+        # Отзывы. Пока ни один не одобрен — показываем демонстрационные с честной
+        # пометкой; как только в админке одобрен первый настоящий, демо уходит само.
+        conn_r = get_db()
+        try:
+            r_stats = reviews_stats(conn_r)
+            r_shown = reviews_published(conn_r, 3) if r_stats["count"] else []
+            r_contacts = contact_settings(conn_r)
+        finally:
+            conn_r.close()
+
+        if r_shown:
+            reviews = "\n".join(review_card_html(r) for r in r_shown)
+            reviews_head = (f'<p class="sub">Середня оцінка <b>{r_stats["avg"]}</b> з 5 '
+                            f'за {r_stats["count"]} відгуками</p>')
+            reviews_note = ""
+            reviews_more = (f'<p class="reviews-more">'
+                            f'<a class="btn btn-ghost" href="/reviews">Читати всі '
+                            f'{r_stats["count"]} відгуків</a>'
+                            f'<a class="btn btn-accent" href="/reviews#leave">Залишити відгук</a></p>')
+        else:
+            reviews = "\n".join(review_card_html({"name": who, "car": car, "stars": n, "text": text})
+                                for who, car, n, text in REVIEWS)
+            reviews_head = (f'<p class="sub"><a class="link-more" href="{esc(r_contacts["reviews_url"])}" '
+                            f'target="_blank" rel="noopener">Читати в Google →</a></p>')
+            reviews_note = ('<p class="demo-note demo-note--tight">Відгуки, імена й оцінки — '
+                            'демонстраційні: показують, як виглядатиме цей блок на сайті СТО.</p>')
+            reviews_more = ('<p class="reviews-more">'
+                            '<a class="btn btn-accent" href="/reviews#leave">Залишити відгук</a></p>')
 
         faq = "\n".join(f"""<details class="faq-item">
           <summary>{esc(q)}</summary><div class="faq-body"><p>{esc(a)}</p></div>
@@ -1711,6 +1984,9 @@ class Handler(BaseHTTPRequestHandler):
                 .replace("{{CLASS_CARDS}}", class_cards)
                 .replace("{{GALLERY}}", photos)
                 .replace("{{REVIEWS}}", reviews)
+                .replace("{{REVIEWS_HEAD}}", reviews_head)
+                .replace("{{REVIEWS_NOTE}}", reviews_note)
+                .replace("{{REVIEWS_MORE}}", reviews_more)
                 .replace("{{FAQ}}", faq)
                 .replace("{{JSONLD}}", json.dumps(jsonld, ensure_ascii=False))
                 .replace("{{JSONLD_FAQ}}", json.dumps(faqld, ensure_ascii=False))

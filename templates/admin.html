@@ -64,6 +64,22 @@
     <div id="leads-box"><div class="empty">Завантаження…</div></div>
   </section>
 
+  <section class="panel" id="reviews">
+    <div class="panel-head">
+      <h2>Відгуки з сайту <span class="pill" id="rev-pending-pill" hidden></span></h2>
+      <div class="panel-tools">
+        <div class="seg" role="group" aria-label="Фільтр відгуків">
+          <button class="seg-btn active" id="rev-tab-pending" data-status="pending" aria-pressed="true">На перевірці</button>
+          <button class="seg-btn" id="rev-tab-published" data-status="published" aria-pressed="false">Опубліковані</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="rev-reload">Оновити</button>
+      </div>
+    </div>
+    <p class="mini">Відгуки, надіслані зі сторінки «Відгуки». На сайті з'являються лише після
+      натискання «Опублікувати» — так у блоці не опиниться реклама чи спам.</p>
+    <div id="rev-box"><div class="empty">Завантаження…</div></div>
+  </section>
+
   <div class="alert warn" id="pwd-alert" hidden>
     <b>Стоїть демо-пароль адмінки.</b> Змініть його до показу сайту клієнту — інакше в панель
     зможе зайти будь-хто, кому ви дали посилання.

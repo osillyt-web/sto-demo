@@ -604,6 +604,74 @@
   syncScrollable();
   sync();
 
+  /* ------------------------------ отзывы с сайта ------------------------------ */
+  const revState = { status: "pending" };
+
+  function renderReviews(list, stats) {
+    const box = $("#rev-box");
+    const pill = $("#rev-pending-pill");
+    if (pill) {
+      if (stats.pending > 0) { pill.textContent = stats.pending + " нових"; pill.hidden = false; }
+      else { pill.hidden = true; }
+    }
+    if (!list.length) {
+      box.innerHTML = `<div class="empty">${revState.status === "pending"
+        ? "Нових відгуків немає. Коли відвідувач надішле відгук зі сторінки «Відгуки», він з'явиться тут."
+        : "Опублікованих відгуків поки немає."}</div>`;
+      return;
+    }
+    box.innerHTML = list.map(r => `
+      <div class="rev-item ${r.status}">
+        <div class="rev-head">
+          <span class="rev-stars">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</span>
+          <span class="rev-who">${esc(r.name)}${r.car ? " · " + esc(r.car) : ""}</span>
+          <span class="rev-meta">${esc(r.created_at)}</span>
+        </div>
+        <p class="rev-text">${esc(r.text)}</p>
+        <div class="rev-btns">
+          ${r.status === "pending"
+            ? `<button class="btn btn-accent btn-sm" data-rev="approve" data-id="${r.id}">Опублікувати</button>`
+            : `<button class="btn btn-ghost btn-sm" data-rev="hide" data-id="${r.id}">Зняти з публікації</button>`}
+          <button class="btn btn-ghost btn-sm" data-rev="delete" data-id="${r.id}">Видалити</button>
+        </div>
+      </div>`).join("");
+  }
+
+  async function loadReviews() {
+    let data;
+    try { data = await api("/api/admin/reviews?status=" + revState.status); } catch (e) { return; }
+    renderReviews(data.reviews, data.stats);
+  }
+
+  const revTabs = $$("#rev-tab-pending, #rev-tab-published");
+  $("#rev-reload")?.addEventListener("click", loadReviews);
+  revTabs.forEach(btn => btn.addEventListener("click", () => {
+    revState.status = btn.dataset.status;
+    revTabs.forEach(b => {
+      const on = b === btn;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    loadReviews();
+  }));
+  $("#rev-box")?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-rev]");
+    if (!btn) return;
+    const action = btn.dataset.rev, id = btn.dataset.id;
+    const ask = action === "approve" ? "Опублікувати цей відгук на сайті?"
+              : action === "hide" ? "Зняти відгук з публікації?"
+              : "Видалити відгук назавжди?";
+    if (!confirm(ask)) return;
+    btn.disabled = true;
+    try {
+      await api("/admin/review", { action, id });
+      toast(action === "approve" ? "Відгук опубліковано"
+          : action === "hide" ? "Відгук знято з публікації" : "Відгук видалено");
+      loadReviews();
+    } catch (err) { btn.disabled = false; }
+  });
+  loadReviews();
+
   // переход: своя прокрутка (не конфликтует со scroll-behavior) + фокус в раздел
   links.forEach(a => {
     a.addEventListener("click", (e) => {
