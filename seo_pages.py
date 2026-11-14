@@ -76,7 +76,7 @@ def build_services_index(conn):
       <a class="btn btn-ghost" href="tel:%s">Подзвонити</a>
     </div>
   </div>
-</div></section>''' % ("", "".join(cards), _phone_raw(conn))
+</div></section>''' % ('<p class="eyebrow"><span class="dot"></span> Послуги · автосервіс</p>', "".join(cards), _phone_raw(conn))
 
     jsonld = {"@context": "https://schema.org", "@type": "CollectionPage",
               "name": "Послуги СТО АвтоКрапка", "url": _site + "/services"}
@@ -104,9 +104,9 @@ def build_service_page(conn, slug):
 
     body = '''
 <section class="sec"><div class="wrap">
-  %s
   <div class="svc-top">
     <div class="svc-main">
+      %s
       <h1 class="page-h1">%s</h1>
       <p class="page-lead">%s</p>
       <div class="svc-chips">
@@ -153,7 +153,7 @@ def build_service_page(conn, slug):
   <h2 class="h2">Інші послуги</h2>
   <div class="svc-mini-grid">%s</div>
 </div></section>''' % (
-        "",
+        '<p class="eyebrow"><span class="dot"></span> Послуги · автосервіс</p>',
         _esc(sv["title"]), _esc(sv["lead"]), _esc(sv["duration"]), _phone_raw(conn),
         _esc(sv["photo"]), _esc(sv["title"]), head_cells, price_rows,
         includes, not_included, _esc(sv["why"]), faq_html, others)
@@ -198,7 +198,7 @@ def build_brands_index(conn):
   питають найчастіше: чи знайомий сервіс з вашою моделлю і на що дивитись у першу чергу.</p>
   <div class="svc-grid">%s</div>
   <p class="mini">Немає вашої марки у списку? Зателефонуйте — у 9 з 10 випадків беремось.</p>
-</div></section>''' % ("", cards)
+</div></section>''' % ('<p class="eyebrow"><span class="dot"></span> Марки · автосервіс</p>', cards)
     return ("Марки авто, з якими працюємо — ремонт і обслуговування у Києві | АвтоКрапка",
             "Volkswagen, Toyota, Skoda, BMW, Renault, Nissan — обслуговування і ремонт у Києві. "
             "Онлайн-запис, фіксована ціна до робіт.",
@@ -215,9 +215,9 @@ def build_brand_page(conn, slug):
         % (k, _esc(v["title"]), _esc(v["price_rows"][0][1])) for k, v in SERVICES.items())
     body = '''
 <section class="sec"><div class="wrap">
-  %s
   <div class="svc-top">
     <div class="svc-main">
+      %s
       <h1 class="page-h1">%s — ремонт і обслуговування у Києві</h1>
       <p class="page-lead">%s</p>
       <div class="brand-models">%s</div>
@@ -236,7 +236,7 @@ def build_brand_page(conn, slug):
   <div class="why"><b>Чесність</b><p>Працюємо за регламентом виробника, ставимо відмітку
   в сервісній книжці, зняті деталі показуємо. Якщо ремонт не потрібен — так і скажемо.</p></div>
 </div></section>''' % (
-        "",
+        '<p class="eyebrow"><span class="dot"></span> Марки · автосервіс</p>',
         _esc(b["title"]), _esc(b["note"]), models, _phone_raw(conn),
         _esc(b["photo"]), _esc(b["title"]), _esc(b["title"]), svc_links)
 
