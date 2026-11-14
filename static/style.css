@@ -65,8 +65,11 @@ p{margin:0 0 12px}
 /* ---------- кнопки ---------- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:9px;
-  padding:12px 22px;border-radius:11px;font-weight:650;font-size:15px;
+  /* высота и шрифт заданы жёстко: иначе <a> и <button> с разным line-height
+     дают разную высоту, и стоящие рядом кнопки выглядят неаккуратно */
+  height:50px;padding:0 22px;border-radius:11px;font-weight:650;font-size:16px;line-height:1;
   border:1px solid transparent;cursor:pointer;transition:transform .15s,background .15s,border-color .15s;
+  text-align:center;
   font-family:inherit;
 }
 .btn:active{transform:translateY(1px)}
@@ -74,7 +77,7 @@ p{margin:0 0 12px}
 .btn-accent:hover{background:linear-gradient(135deg,var(--accent-2),var(--accent))}
 .btn-ghost{border-color:var(--line-2);color:var(--text);background:rgba(255,255,255,.02)}
 .btn-ghost:hover{border-color:#455063;background:rgba(255,255,255,.05)}
-.btn-lg{padding:15px 28px;font-size:16px}
+.btn-lg{height:58px;padding:0 28px;font-size:16px}
 .btn-wide{width:100%}
 
 /* ---------- шапка ---------- */
@@ -280,8 +283,12 @@ p{margin:0 0 12px}
 label{display:grid;gap:7px;font-size:13px;color:var(--muted)}
 input,select,textarea{
   background:var(--bg);border:1px solid var(--line);border-radius:11px;
-  padding:13px 15px;color:var(--text);font:inherit;font-size:15px;width:100%;transition:border-color .15s,box-shadow .15s;
+  padding:13px 15px;color:var(--text);font:inherit;font-size:16px;width:100%;transition:border-color .15s,box-shadow .15s;
 }
+/* поля одного вида — одной высоты: у select своя внутренняя высота, из-за неё
+   список выбора был ниже поля ввода и это было видно глазом */
+input:not([type=checkbox]):not([type=radio]),select{height:52px;padding:0 15px;line-height:1.2}
+textarea{min-height:120px;line-height:1.5}
 input::placeholder,textarea::placeholder{color:#5f6a7a}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,106,26,.14)}
 textarea{resize:vertical}
@@ -537,12 +544,14 @@ textarea{resize:vertical}
   }
   .float-cta.hide{transform:translateY(110%);opacity:0;pointer-events:none}
   .fc-call{
-    flex:0 0 auto;width:48px;height:48px;display:grid;place-items:center;
+    flex:0 0 auto;width:50px;height:50px;display:grid;place-items:center;
     border:1px solid var(--line-2);border-radius:11px;color:var(--text);
   }
   .fc-call svg{width:21px;height:21px;color:var(--accent)}
   .fc-call:active{transform:translateY(1px)}
-  .fc-book{flex:1 1 auto;min-height:48px;font-size:15.5px}
+  /* та же высота и шрифт, что у кнопки рядом — иначе две кнопки в панели
+     выглядят разного размера */
+  .fc-book{flex:1 1 auto;height:50px;font-size:16px}
   body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
 }
 
@@ -1038,8 +1047,8 @@ textarea{resize:vertical}
 .rev-empty{background:var(--card);border:1px dashed var(--line);border-radius:var(--r);
   padding:22px;color:var(--muted);font-size:16px}
 .rev-filters{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 18px}
-.rev-filters a{padding:9px 15px;border-radius:99px;border:1px solid var(--line);
-  background:var(--card);color:var(--muted);font-size:16px;text-decoration:none}
+.rev-filters a{height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:99px;
+  border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:16px;text-decoration:none}
 .rev-filters a:hover{border-color:var(--accent);color:var(--text)}
 .rev-filters a[aria-current="true"]{border-color:var(--accent);color:var(--text)}
 .rev-pager{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
@@ -1056,6 +1065,8 @@ textarea{resize:vertical}
 .field>span em{color:var(--muted);font-style:normal}
 .field input[type=text],.field textarea{background:#0e1218;border:1px solid var(--line);
   border-radius:10px;padding:12px 14px;color:var(--text);font-size:16px;font-family:inherit;width:100%}
+.field input[type=text]{height:52px;padding:0 14px;line-height:1.2}
+.field textarea{min-height:120px;line-height:1.5}
 .field textarea{resize:vertical;min-height:120px}
 .field input[type=text]:focus,.field textarea:focus{outline:none;border-color:var(--accent)}
 .field .hint{color:var(--muted);font-size:15px}
