@@ -109,14 +109,14 @@
       </tr>`).join("");
 
     $("#leads-box").innerHTML = `
-      <table class="responsive">
+      <div class="tbl-scroll"><table class="responsive">
         <thead><tr>
           <th class="hide-sm">Дата</th><th>Клієнт</th><th class="hide-sm">Послуга / авто</th>
           <th class="hide-sm">Деталі</th><th>Нотатка</th><th>Статус</th>
           <th><span class="sr-only">Дії</span></th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table></div>`;
   }
 
   /* ------------------------------ услуги ------------------------------ */
@@ -144,13 +144,13 @@
       </tr>`).join("");
 
     $("#svc-box").innerHTML = `
-      <table class="responsive">
+      <div class="tbl-scroll"><table class="responsive">
         <thead><tr>
           <th>Назва</th><th>Ціна</th><th>База, ₴</th><th class="hide-sm">Опис</th><th>Активна</th>
           <th><span class="sr-only">Дії</span></th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table></div>`;
   }
 
 
