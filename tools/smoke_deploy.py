@@ -23,6 +23,11 @@ def check(name, ok, extra=""):
     results.append((name, bool(ok), extra))
 
 
+def _headers(msg):
+    """Заголовки в едином виде: Name-Case, чтобы проверки не зависели от регистра."""
+    return {k.title(): v for k, v in msg.items()}
+
+
 def fetch(path, timeout=30, data=None):
     url = BASE + path
     req = urllib.request.Request(url, data=data)
@@ -31,9 +36,9 @@ def fetch(path, timeout=30, data=None):
     t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.status, r.read(), round(time.time() - t0, 2), dict(r.headers)
+            return r.status, r.read(), round(time.time() - t0, 2), _headers(r.headers)
     except urllib.error.HTTPError as e:
-        return e.code, e.read(), round(time.time() - t0, 2), dict(e.headers)
+        return e.code, e.read(), round(time.time() - t0, 2), _headers(e.headers)
     except Exception as exc:
         return 0, str(exc).encode(), round(time.time() - t0, 2), {}
 

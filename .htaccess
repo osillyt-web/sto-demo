@@ -1,0 +1,11 @@
+# Все запросы, для которых нет реального файла, отдаём прокси (index.php),
+# который передаёт их Python-серверу. Существующая статика (static/*.css, *.js, img)
+# отдаётся Apache напрямую — FallbackResource срабатывает только при 404.
+DirectoryIndex index.php index.html
+FallbackResource /index.php
+
+# Служебные каталоги наружу не отдаём.
+RedirectMatch 404 ^/data(/|$)
+RedirectMatch 404 ^/backups(/|$)
+RedirectMatch 404 ^/__pycache__(/|$)
+RedirectMatch 404 \.(py|pyc|log|db|pid)$
