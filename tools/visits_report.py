@@ -35,10 +35,17 @@ def load_visits(db_path: str, days: int, src: str | None) -> list[tuple[dt.datet
     has_src = "src" in cols
 
     since = (dt.datetime.now() - dt.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-    src_expr = "COALESCE(src,'')" if has_src else "''"
+    # Источник берём не только у первого события сессии: человек мог сначала зайти
+    # на сайт напрямую, а потом открыть ссылку из письма — такая сессия должна
+    # считаться пришедшей из письма.
+    if has_src:
+        src_pick = ("(SELECT e2.src FROM events e2 WHERE e2.session=e.session "
+                    "AND COALESCE(e2.src,'')<>'' ORDER BY e2.created_at LIMIT 1)")
+    else:
+        src_pick = "''"
     rows = conn.execute(
-        f"SELECT session, MIN(created_at) AS first_at, {src_expr} AS src "
-        "FROM events WHERE name='view' AND created_at >= ? "
+        f"SELECT session, MIN(created_at) AS first_at, {src_pick} AS src "
+        "FROM events e WHERE name='view' AND created_at >= ? "
         "GROUP BY session ORDER BY first_at",
         (since,),
     ).fetchall()
