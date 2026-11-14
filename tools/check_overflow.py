@@ -19,8 +19,10 @@ SCRIPT = """() => {
     if (cs.display === 'none' || cs.visibility === 'hidden') return;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) return;
-    const overY = el.scrollHeight - el.clientHeight;
-    const overX = el.scrollWidth - el.clientWidth;
+    const overY = el.scrollHeight - el.clientHeight -
+                  (parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth));
+    const overX = el.scrollWidth - el.clientWidth -
+                  (parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth));
     if (overY > 1 || overX > 1) {
       out.push({ text: (el.innerText || el.value || '').replace(/\\s+/g,' ').slice(0, 26),
                  cls: (el.className||'').toString().slice(0,30),
