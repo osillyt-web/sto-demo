@@ -1556,6 +1556,18 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
             return self.json_out({"ok": True})
 
+        if path == "/admin/stats/reset":
+            # обнуление статистики посещений: владелец сам решает, когда начать с чистого листа
+            conn = get_db()
+            try:
+                removed = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+                conn.execute("DELETE FROM events")
+                ops.audit(conn, "статистику очищено", f"подій: {removed}")
+                conn.commit()
+            finally:
+                conn.close()
+            return self.json_out({"ok": True, "removed": removed})
+
         return self.send(404, "Не знайдено")
 
     # ------------------------------------------------------------ аналитика

@@ -486,6 +486,14 @@
   });
 
   $("#reload-stats")?.addEventListener("click", () => { loadAnalytics(); toast("Оновлено"); });
+
+  /* обнуление статистики: подтверждение обязательно — действие необратимо */
+  $("#reset-stats")?.addEventListener("click", async () => {
+    if (!confirm("Очистити статистику відвідувань?\n\nУсі записи про заходи буде видалено. Скасувати дію неможливо.")) return;
+    const res = await api("/admin/stats/reset", {});
+    toast(res.ok ? `Статистику очищено (${res.removed} записів)` : (res.error || "Не вдалося очистити"));
+    if (res.ok) loadAnalytics();
+  });
   loadAnalytics();
   loadSettings();
 })();
