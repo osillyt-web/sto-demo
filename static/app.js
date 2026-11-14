@@ -59,8 +59,28 @@
       entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add("shown"); io.unobserve(e.target); }
       });
-    }, { threshold: 0.12 });
+    }, { threshold: 0, rootMargin: "0px 0px 240px 0px" });
     items.forEach((el, i) => { el.style.transitionDelay = `${Math.min(i, 6) * 45}ms`; io.observe(el); });
+
+    // Страховка. При быстрой прокрутке пальцем (флик) наблюдатель может пропустить
+    // блок: он пролетает мимо зоны срабатывания и остаётся прозрачным — человек
+    // видит заголовок и пустое место. Поэтому на каждый кадр прокрутки показываем
+    // всё, что уже поднялось выше нижней границы окна.
+    let raf = 0;
+    const sweep = () => {
+      raf = 0;
+      items.forEach(el => {
+        if (!el.classList.contains("shown") && el.getBoundingClientRect().top < window.innerHeight) {
+          el.classList.add("shown");
+          io.unobserve(el);
+        }
+      });
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(sweep); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    window.addEventListener("load", () => setTimeout(sweep, 300));
+    setTimeout(sweep, 900);
   } else {
     items.forEach(el => el.classList.add("shown"));
   }

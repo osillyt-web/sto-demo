@@ -189,13 +189,17 @@ def reviews_stats(conn) -> dict:
 
 
 def review_card_html(r: dict) -> str:
-    """Карточка отзыва для сайта. Одинаковая на главной и на странице /reviews."""
+    """Карточка отзыва для сайта. Одинаковая на главной и на странице /reviews.
+
+    Без атрибута data-reveal: отзывы должны быть видны сразу, а не появляться
+    по мере прокрутки — иначе при быстром листании на телефоне блок выглядит пустым.
+    """
     stars = int(r.get("stars") or 5)
     who = esc(r.get("name") or "")
     car = esc(r.get("car") or "")
     body = esc(r.get("text") or "")
     tail = f"{who} · <span>{car}</span>" if car else who
-    return (f'<article class="review" data-reveal>\n'
+    return (f'<article class="review">\n'
             f'  <h3 class="sr-only">Відгук клієнта: {who}</h3>\n'
             f'  <div class="stars" role="img" aria-label="Оцінка {stars} з 5">{"★" * stars}</div>\n'
             f'  <p>«{body}»</p>\n'
