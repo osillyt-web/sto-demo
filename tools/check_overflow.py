@@ -10,6 +10,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "https://osillytweb.alwaysdata.net/"
+FONT = int(sys.argv[2]) if len(sys.argv) > 2 else 16
 
 SCRIPT = """() => {
   const out = [];
@@ -32,7 +33,10 @@ SCRIPT = """() => {
 
 
 def main():
-    pages = [URL, URL.rstrip("/") + "/reviews", URL.rstrip("/") + "/order"]
+    base = URL.rstrip("/")
+    pages = [URL, base + "/reviews", base + "/order", base + "/services", base + "/brands",
+             base + "/pricing", base + "/cases", base + "/privacy",
+             base + "/services/to", base + "/brands/toyota"]
     bad_total = 0
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -40,13 +44,17 @@ def main():
             ctx = browser.new_context(viewport={"width": width, "height": 900}, device_scale_factor=1,
                                       is_mobile=(width == 390), has_touch=(width == 390))
             page = ctx.new_page()
+            if FONT != 16:
+                # эмулируем настройку «Размер шрифта» в браузере
+                cdp = ctx.new_cdp_session(page)
+                cdp.send("Page.setFontSizes", {"fontSizes": {"standard": FONT, "fixed": FONT}})
             for url in pages:
                 page.goto(url, wait_until="load", timeout=60000)
                 page.wait_for_timeout(1000)
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 page.wait_for_timeout(600)
                 bad = page.evaluate(SCRIPT)
-                print(f"{label} {url}: обрезанных элементов — {len(bad)}")
+                print(f"шрифт {FONT}, {label} {url}: обрезанных — {len(bad)}")
                 for b in bad:
                     print(f"    · «{b['text']}» {b['cls']} {b['w']}×{b['h']} "
                           f"выход по Y={b['overY']} X={b['overX']}")
